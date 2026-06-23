@@ -1,0 +1,74 @@
+// https://nuxt.com/docs/api/configuration/nuxt-config
+export default defineNuxtConfig({
+  compatibilityDate: '2026-06-01',
+  future: { compatibilityVersion: 4 },
+  devtools: { enabled: true },
+
+  // Per-surface code lives in layers (see docs/ARCHITECTURE.md §8).
+  extends: [
+    './layers/base',
+    './layers/marketing',
+    './layers/admin',
+    './layers/storefront',
+  ],
+
+  modules: ['@nuxtjs/supabase', '@nuxt/ui', '@nuxt/eslint'],
+
+  css: ['~/assets/css/main.css'],
+
+  vite: {
+    // dev only: allow any Host (we run behind a cloudflared tunnel for IG OAuth)
+    server: { allowedHosts: true },
+  },
+
+  devServer: { host: '0.0.0.0', port: 3000 },
+
+  supabase: {
+    url: process.env.NUXT_PUBLIC_SUPABASE_URL,
+    key: process.env.NUXT_PUBLIC_SUPABASE_KEY,
+    serviceKey: process.env.NUXT_SUPABASE_SECRET_KEY,
+    // We resolve auth/redirects ourselves (admin host only); don't let the module redirect.
+    redirect: false,
+    types: '~~/shared/types/database.types.ts',
+    // H8: seller/admin cookie is HOST-scoped to app.* — never Domain=.insteshop.app
+    cookieName: 'sb',
+    cookieOptions: {
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 8,
+    },
+  },
+
+  runtimeConfig: {
+    // server-only secrets (override via NUXT_* env)
+    supabaseSecretKey: '',
+    geminiApiKey: '',
+    geminiModel: 'gemini-2.5-flash',
+    igAppId: '',
+    igAppSecret: '',
+    igRedirectUri: '',
+    igWebhookVerifyToken: '',
+    igGraphVersion: 'v23.0',
+    cronSecret: '', // guards /api/ig/cron/* (Vercel Cron sends it as a Bearer token)
+    stripeSecretKey: '',
+    stripeWebhookSecret: '',
+    platformFeeBps: '0', // default Connect application fee in basis points (150 = 1.5%)
+    resendApiKey: '',
+    resendFrom: '',
+    public: {
+      supabaseUrl: '',
+      // overridden in dev by NUXT_PUBLIC_APP_BASE_DOMAIN=lvh.me:3000
+      appBaseDomain: 'insteshop.app',
+      siteUrl: 'https://insteshop.app',
+      stripePublishableKey: '', // pk_… — the platform key (Connect destination charges)
+    },
+  },
+
+  nitro: {
+    // dev/build auto-detect; set NITRO_PRESET=vercel for production (Node functions).
+    preset: process.env.NITRO_PRESET || undefined,
+    routeRules: { '/api/**': { cors: false } },
+  },
+
+  typescript: { typeCheck: false }, // vue-tsc runs in CI via `pnpm typecheck`
+})

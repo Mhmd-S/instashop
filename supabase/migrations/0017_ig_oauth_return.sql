@@ -1,0 +1,11 @@
+-- ============================================================
+-- 0017 — Instagram OAuth return path
+-- Carry the post-connect destination (the onboarding wizard step) across the
+-- OAuth round-trip. The ig_return cookie is best-effort: it's lost whenever the
+-- callback lands on a different origin than the connect (e.g. the cloudflared
+-- tunnel in dev, where connect is on app.lvh.me but Meta redirects to the tunnel
+-- host). The single-use state row, keyed by the nonce that DOES survive Meta's
+-- redirect, is the reliable carrier. Validated as a local path on write
+-- (connect) and read (callback). Service-role only — no grants/policies needed.
+-- ============================================================
+alter table public.ig_oauth_states add column if not exists return_to text;

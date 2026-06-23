@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/*
+  Nuxt UI owns the global design system (admin + marketing). The storefront overrides
+  Nuxt UI's --ui-* variables per tenant (app/plugins/theme.server.ts) so its components
+  reflect the seller's vibe. The only custom tokens are the per-tenant fonts + a brand
+  radius utility, both driven by injected --t-* variables (fall back to Nuxt UI defaults).
+*/
+@theme {
+  --radius-brand: var(--t-radius, var(--ui-radius, 0.5rem));
+  --font-heading: var(--t-font-heading, ui-sans-serif), system-ui, sans-serif;
+  --font-body: var(--t-font-body, ui-sans-serif), system-ui, sans-serif;
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/ig/cron/refresh-tokens",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/stripe/cron/sweep-unpaid",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "insteshop",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt dev",
+    "dev:host": "nuxt dev --host",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:types": "SUPABASE_ACCESS_TOKEN=local-dummy supabase gen types typescript --db-url postgresql://postgres:postgres@127.0.0.1:54322/postgres > shared/types/database.types.ts",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.2",
+    "@google/genai": "^2.8.0",
+    "@nuxt/ui": "^4.8.2",
+    "@nuxtjs/supabase": "^2.0.9",
+    "@stripe/stripe-js": "^7.6.1",
+    "@tailwindcss/vite": "^4.3.1",
+    "@vueuse/core": "^14.3.0",
+    "nuxt": "^4.4.8",
+    "resend": "^6.12.4",
+    "sharp": "^0.35.1",
+    "stripe": "^22.2.1",
+    "tailwindcss": "^4.3.1",
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0",
+    "ws": "^8.21.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.113",
+    "@nuxt/eslint": "^1.16.0",
+    "@types/ws": "^8.18.1",
+    "eslint": "^10.5.0",
+    "supabase": "^2.106.0",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.5"
+  }
+}
