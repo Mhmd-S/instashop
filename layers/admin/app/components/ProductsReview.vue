@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminProduct } from '~~/shared/types/product'
+import type { AdminProduct, ProductDraft } from '~~/shared/types/product'
 import { formatPrice } from '~~/shared/types/product'
 
 // Inline products review for the wizard: a compact list of imported products, each
@@ -23,17 +23,56 @@ function toggle(id: string) {
   expanded.value = expanded.value === id ? null : id
 }
 
-// The wizard's Next button has no per-product Save button to lean on, so it asks
-// us to persist whatever editor is open before advancing. We hold a ref to the
-// single mounted editor (keyed by id so the unmount of a stale one never clobbers
-// a freshly-mounted one) and expose save() up to the onboarding page.
-const openEditor = shallowRef<{ id: string; el: { save: () => Promise<boolean> } } | null>(null)
-function bindEditor(id: string, el: unknown) {
-  if (el) openEditor.value = { id, el: el as { save: () => Promise<boolean> } }
-  else if (openEditor.value?.id === id) openEditor.value = null
+// Unsaved edits per product, lifted out of the inline editors. The list rows render
+// these over the fetched product so edits show immediately, and they survive
+// collapsing/switching rows — the wizard's Next button persists them all at once.
+const drafts = ref<Record<string, ProductDraft>>({})
+function onEdit(id: string, draft: ProductDraft | null) {
+  if (!draft && !(id in drafts.value)) return // clean editor with nothing to clear
+  const next = { ...drafts.value }
+  if (draft) next[id] = draft
+  else delete next[id]
+  drafts.value = next
 }
+// Products with their pending edits applied, for display.
+const rows = computed(() =>
+  products.value.map((p) => {
+    const d = drafts.value[p.id]
+    return d ? { ...p, title: d.title, price_minor: d.price_minor, status: d.status } : p
+  }),
+)
+
+// Take every priced draft live in one request. Unpriced drafts stay draft so we
+// never publish a $0 listing; the seller prices them later.
+async function publishDrafts(): Promise<boolean> {
+  err.value = null
+  try {
+    await $fetch(`/api/admin/stores/${props.storeId}/products/publish-drafts`, { method: 'POST' })
+    await refresh()
+    return true
+  } catch (e) {
+    err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not publish products'
+    return false
+  }
+}
+
+// The wizard's Next button calls this to finish the products step: persist every
+// pending edit, then publish the priced drafts. A failure stops the wizard from
+// advancing (the error shows inline above).
 async function save(): Promise<boolean> {
-  return openEditor.value ? await openEditor.value.el.save() : true
+  err.value = null
+  const pending = Object.entries(drafts.value)
+  try {
+    for (const [id, body] of pending) {
+      await $fetch(`/api/admin/stores/${props.storeId}/products/${id}`, { method: 'PATCH', body })
+    }
+  } catch (e) {
+    err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not save changes'
+    return false
+  }
+  drafts.value = {}
+  if (pending.length) await refresh()
+  return await publishDrafts()
 }
 defineExpose({ save })
 
@@ -44,12 +83,32 @@ const err = ref<string | null>(null)
 async function quickPublish(p: AdminProduct) {
   busyId.value = p.id
   err.value = null
+  const status = p.status === 'published' ? 'draft' : 'published'
   try {
-    const status = p.status === 'published' ? 'draft' : 'published'
     await $fetch(`/api/admin/stores/${props.storeId}/products/${p.id}`, { method: 'PATCH', body: { status } })
+    // Keep an in-progress draft for this row in sync so the Next save won't revert it.
+    const d = drafts.value[p.id]
+    if (d) onEdit(p.id, { ...d, status })
     await refresh()
   } catch (e) {
     err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not update product'
+  } finally {
+    busyId.value = null
+  }
+}
+
+// Delete straight from the row — no need to expand the product first.
+async function quickDelete(p: AdminProduct) {
+  if (!confirm(`Delete "${p.title}"?`)) return
+  busyId.value = p.id
+  err.value = null
+  try {
+    await $fetch(`/api/admin/stores/${props.storeId}/products/${p.id}`, { method: 'DELETE' })
+    if (expanded.value === p.id) expanded.value = null
+    onEdit(p.id, null) // drop any pending draft for the gone product
+    await refresh()
+  } catch (e) {
+    err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not delete product'
   } finally {
     busyId.value = null
   }
@@ -73,7 +132,9 @@ async function addProduct() {
 }
 
 function onDeleted() {
+  const id = expanded.value
   expanded.value = null
+  if (id) onEdit(id, null) // drop any pending draft for the gone product
   refresh()
 }
 </script>
@@ -103,7 +164,7 @@ function onDeleted() {
 
     <template v-else>
       <ul class="space-y-2">
-        <li v-for="p in products" :key="p.id" class="rounded-lg border border-default overflow-hidden">
+        <li v-for="p in rows" :key="p.id" class="rounded-lg border border-default overflow-hidden">
           <div class="flex items-center gap-3 p-3">
             <button type="button" class="flex items-center gap-3 min-w-0 flex-1 text-left" @click="toggle(p.id)">
               <UIcon :name="expanded === p.id ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 shrink-0 text-dimmed" />
@@ -126,14 +187,21 @@ function onDeleted() {
               :loading="busyId === p.id" :disabled="busyId === p.id"
               @click="quickPublish(p)"
             />
+            <UButton
+              v-if="expanded !== p.id"
+              size="xs" color="error" variant="ghost" icon="i-lucide-trash-2"
+              title="Delete" :disabled="busyId === p.id"
+              @click="quickDelete(p)"
+            />
           </div>
           <div v-if="expanded === p.id" class="border-t border-default p-4 bg-elevated/30">
             <ProductEditor
-              :ref="(el) => bindEditor(p.id, el)"
               :store-id="storeId"
               :product-id="p.id"
               :currency="currency"
+              :draft="drafts[p.id] ?? null"
               embedded
+              @edit="(d) => onEdit(p.id, d)"
               @changed="refresh"
               @deleted="onDeleted"
             />

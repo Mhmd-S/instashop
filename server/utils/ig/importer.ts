@@ -160,10 +160,15 @@ async function loadExistingProductKeys(
 ): Promise<Map<string, { productId: string; locked: boolean }>> {
   const out = new Map<string, { productId: string; locked: boolean }>()
   const { data: links } = await admin.from('product_ig_posts').select('ig_media_id, product_id').eq('store_id', storeId)
-  const linkRows = (links ?? []) as { ig_media_id: string; product_id: string }[]
+  const linkRows = (links ?? []) as { ig_media_id: string; product_id: string | null }[]
   if (!linkRows.length) return out
   const mediaToProduct = new Map<string, string>()
-  for (const r of linkRows) if (!mediaToProduct.has(r.ig_media_id)) mediaToProduct.set(r.ig_media_id, r.product_id)
+  for (const r of linkRows) {
+    // Skip tombstones (product deleted → product_id nulled): the post stays in the
+    // dedup set so it's never re-imported, but it must not merge into a dead product.
+    if (!r.product_id) continue
+    if (!mediaToProduct.has(r.ig_media_id)) mediaToProduct.set(r.ig_media_id, r.product_id)
+  }
 
   const { data: prods } = await admin
     .from('products')

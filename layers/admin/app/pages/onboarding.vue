@@ -343,7 +343,7 @@ async function createStore() {
           <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-package" class="size-5" /></div>
           <div>
             <h2 class="font-semibold text-highlighted">Review your products</h2>
-            <p class="text-sm text-muted mt-0.5">Set prices, edit details, add photos and publish. Imported items start as drafts — expand any to edit.</p>
+            <p class="text-sm text-muted mt-0.5">Set prices, edit details and add photos — expand any to edit. Hitting <span class="font-medium text-highlighted">Next</span> publishes everything you've priced; unpriced items stay as drafts you can publish later.</p>
           </div>
         </div>
         <ProductsReview ref="productsReview" :store-id="storeId ?? ''" />
@@ -363,34 +363,23 @@ async function createStore() {
         <BrandingReview :store-id="storeId ?? ''" />
       </div>
 
-      <!-- Payments -->
-      <UCard v-else-if="currentKey === 'payments'">
-        <div class="space-y-4">
-          <div class="flex items-start gap-3">
-            <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-credit-card" class="size-5" /></div>
-            <div>
-              <h2 class="font-semibold text-highlighted">Accept payments</h2>
-              <p class="text-sm text-muted mt-0.5">
-                Connect Stripe to take card payments — money lands in your own Stripe account. Orders still work with cash on delivery without this.
-              </p>
-            </div>
-          </div>
-          <UAlert
-            v-if="status?.steps.payments.chargesEnabled"
-            color="success" variant="soft" icon="i-lucide-circle-check" title="Stripe ready"
-            :description="status.steps.payments.enabled ? 'Card payments are live at checkout.' : 'Stripe can charge — flip on “Accept card payments” to show it at checkout.'"
-          />
-          <UAlert
-            v-else-if="status?.steps.payments.connected"
-            color="warning" variant="soft" icon="i-lucide-triangle-alert"
-            title="Finish Stripe onboarding" description="Stripe needs a few more details before you can accept cards."
-          />
-          <div class="flex flex-wrap gap-3">
-            <UButton :to="deep('payments')" color="primary" icon="i-lucide-credit-card" :label="status?.steps.payments.connected ? 'Manage payments' : 'Connect Stripe'" />
-            <UButton variant="ghost" color="neutral" label="Skip — use cash on delivery" @click="next" />
+      <!-- Payments — connect/manage Stripe inline -->
+      <div v-else-if="currentKey === 'payments'" class="space-y-4">
+        <div class="flex items-start gap-3">
+          <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-credit-card" class="size-5" /></div>
+          <div>
+            <h2 class="font-semibold text-highlighted">Accept payments</h2>
+            <p class="text-sm text-muted mt-0.5">
+              Connect Stripe to take card payments — money lands in your own Stripe account. Orders still work with cash on delivery without this.
+            </p>
           </div>
         </div>
-      </UCard>
+        <PaymentsSetup
+          :store-id="storeId ?? ''"
+          :return-path="onboardingStepUrl(storeId ?? '', 'payments')"
+          @changed="refreshStatus"
+        />
+      </div>
 
       <!-- Preview -->
       <UCard v-else>

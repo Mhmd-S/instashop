@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProductStatus } from '~~/shared/types/product'
+import type { ProductDraft, ProductStatus } from '~~/shared/types/product'
 
 // Self-contained product editor. Rendered on the standalone editor page and inline
 // (per row) in the wizard's products review. Non-blocking fetch + graceful
@@ -14,8 +14,18 @@ import type { ProductStatus } from '~~/shared/types/product'
 // it drops the editor's own Save button (the wizard's Next button drives the save
 // via the exposed save() below) and stays quiet on success (no toast — advancing
 // is the feedback).
-const props = defineProps<{ storeId: string; productId: string; currency?: string | null; embedded?: boolean }>()
-const emit = defineEmits<{ deleted: []; changed: [] }>()
+const props = defineProps<{
+  storeId: string
+  productId: string
+  currency?: string | null
+  embedded?: boolean
+  // The parent's current unsaved draft for this product (wizard). When present the
+  // editor seeds from it so re-opening a row restores in-progress edits.
+  draft?: ProductDraft | null
+}>()
+// `edit` carries the live draft up to the parent (the wizard list reflects it and
+// holds it until Next saves); null when the form matches the saved product.
+const emit = defineEmits<{ deleted: []; changed: []; edit: [ProductDraft | null] }>()
 const toast = useToast()
 
 const { data, refresh, pending } = useFetch(
@@ -36,16 +46,54 @@ const status = ref<ProductStatus>('draft')
 const stock = ref('')
 const categoryIds = ref<string[]>([])
 
+// Seed the form once the product loads — preferring an in-progress draft passed down
+// by the parent (wizard), so re-opening a row restores unsaved edits. Seed only once
+// per mount so our own later edits (or a background image refetch) never clobber what
+// the seller is typing.
+let seeded = false
 watchEffect(() => {
   const p = product.value
-  if (!p) return
-  title.value = p.title
-  price.value = (p.price_minor / 100).toString()
-  description.value = p.description ?? ''
-  status.value = p.status
-  stock.value = p.stock == null ? '' : String(p.stock)
-  categoryIds.value = [...(p.category_ids ?? [])]
+  if (!p || seeded) return
+  seeded = true
+  const d = props.draft
+  title.value = d?.title ?? p.title
+  price.value = ((d?.price_minor ?? p.price_minor) / 100).toString()
+  description.value = (d ? d.description : p.description) ?? ''
+  status.value = d?.status ?? p.status
+  const stockSrc = d ? d.stock : p.stock
+  stock.value = stockSrc == null ? '' : String(stockSrc)
+  categoryIds.value = [...(d?.category_ids ?? p.category_ids ?? [])]
 })
+
+// Mirror the form up to the parent so the list reflects edits live and keeps them in
+// state until the wizard saves; a form back in sync with the saved product clears it.
+function sameIds(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  const set = new Set(a)
+  return b.every((x) => set.has(x))
+}
+const draftValue = computed<ProductDraft>(() => ({
+  title: title.value,
+  description: description.value || null,
+  price_minor: Math.round(Number.parseFloat(price.value || '0') * 100),
+  status: status.value,
+  stock: stock.value === '' ? null : Number.parseInt(stock.value, 10),
+  category_ids: categoryIds.value,
+}))
+const dirty = computed(() => {
+  const p = product.value
+  if (!p) return false
+  const d = draftValue.value
+  return (
+    d.title !== p.title ||
+    d.price_minor !== p.price_minor ||
+    d.description !== (p.description ?? null) ||
+    d.status !== p.status ||
+    d.stock !== (p.stock ?? null) ||
+    !sameIds(d.category_ids, p.category_ids ?? [])
+  )
+})
+watch([dirty, draftValue], ([isDirty, d]) => emit('edit', isDirty ? d : null), { deep: true })
 
 const saving = ref(false)
 const uploading = ref(false)
@@ -189,9 +237,6 @@ async function remove() {
   await $fetch(`/api/admin/stores/${props.storeId}/products/${props.productId}`, { method: 'DELETE' })
   emit('deleted')
 }
-
-// The wizard saves the open editor from its Next button (see ProductsReview).
-defineExpose({ save })
 </script>
 
 <template>

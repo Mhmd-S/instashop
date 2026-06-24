@@ -1,0 +1,223 @@
+<script setup lang="ts">
+// Self-contained Stripe Connect setup: connect/onboarding status, the accept-cards
+// toggle and the commission override. Rendered inline in the onboarding wizard and
+// on the standalone Payments page, so the flow keeps the same design in both places.
+//
+// It also owns the Stripe return landing: Account Links bounce the seller back to
+// whichever page launched the flow with ?stripe=return (or ?stripe=refresh when a
+// link expired), and this component reacts to that marker wherever it's mounted.
+const props = defineProps<{
+  storeId: string
+  // Local path Stripe should return to after onboarding. Omit on the standalone page
+  // (the connect endpoint then defaults to it); the wizard passes its step URL so the
+  // seller lands back inside the onboarding design.
+  returnPath?: string
+}>()
+
+// Emitted after the payment state changes (return-sync, toggle, commission) so a
+// parent that tracks setup status (the wizard) can refresh its stepper/counters.
+const emit = defineEmits<{ changed: [] }>()
+
+const route = useRoute()
+const router = useRouter()
+
+// Non-blocking, always-fresh fetch so the component can mount lazily inside the
+// wizard without suspending it (mirrors the other inline review components).
+const { data, refresh, pending } = useFetch(`/api/admin/stores/${props.storeId}/stripe`, {
+  lazy: true,
+  getCachedData: () => undefined,
+})
+
+const connected = computed(() => !!data.value?.connected)
+const account = computed(() => data.value?.account ?? null)
+const chargesEnabled = computed(() => !!data.value?.chargesEnabled)
+const stripeEnabled = computed(() => !!data.value?.stripeEnabled)
+const detailsSubmitted = computed(() => !!account.value?.details_submitted)
+
+const msg = ref<string | null>(null)
+const err = ref<string | null>(null)
+const busy = ref(false)
+
+const feeBps = ref<number | null>(account.value?.platform_fee_bps ?? null)
+watch(account, (a) => { feeBps.value = a?.platform_fee_bps ?? null })
+
+onMounted(async () => {
+  if (route.query.stripe === 'return') {
+    busy.value = true
+    try {
+      await $fetch(`/api/admin/stores/${props.storeId}/stripe/sync`, { method: 'POST' })
+      await refresh()
+      msg.value = chargesEnabled.value
+        ? 'Stripe connected — you can now accept card payments.'
+        : 'Onboarding saved. Stripe still needs a few details before you can accept cards.'
+      emit('changed')
+    } catch {
+      err.value = 'Could not refresh Stripe status. Try again in a moment.'
+    } finally {
+      busy.value = false
+    }
+    clearStripeMarker()
+  } else if (route.query.stripe === 'refresh') {
+    clearStripeMarker()
+    await startOnboarding()
+  }
+})
+
+// Drop the ?stripe marker once handled so a manual refresh doesn't re-trigger it,
+// preserving every other query param (the wizard's ?store/?step).
+function clearStripeMarker() {
+  const query = { ...route.query }
+  delete query.stripe
+  router.replace({ query })
+}
+
+async function startOnboarding() {
+  busy.value = true
+  err.value = null
+  try {
+    // Thread the wizard return so Stripe's return/refresh links bring the seller back
+    // to wherever they started — keeping the onboarding design across the round-trip.
+    const res = await $fetch(`/api/admin/stores/${props.storeId}/stripe/connect`, {
+      method: 'POST',
+      body: { return: props.returnPath ?? null },
+    })
+    window.location.href = res.url
+  } catch (e) {
+    err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not start Stripe onboarding'
+    busy.value = false
+  }
+}
+
+async function toggleStripe(enable: boolean) {
+  err.value = null
+  msg.value = null
+  try {
+    await $fetch(`/api/admin/stores/${props.storeId}/payment-methods`, { method: 'PATCH', body: { enableStripe: enable } })
+    await refresh()
+    msg.value = enable ? 'Card payments are now live on your storefront.' : 'Card payments turned off.'
+    emit('changed')
+  } catch (e) {
+    err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not update payment methods'
+  }
+}
+
+async function saveFee() {
+  err.value = null
+  msg.value = null
+  try {
+    await $fetch(`/api/admin/stores/${props.storeId}/payment-methods`, { method: 'PATCH', body: { platformFeeBps: feeBps.value } })
+    await refresh()
+    msg.value = 'Commission updated.'
+    emit('changed')
+  } catch (e) {
+    err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not update commission'
+  }
+}
+</script>
+
+<template>
+  <div>
+    <UAlert v-if="msg" class="mb-4" color="success" variant="soft" icon="i-lucide-check" :description="msg" />
+    <UAlert v-if="err" class="mb-4" color="error" variant="soft" icon="i-lucide-circle-alert" :description="err" />
+
+    <div v-if="pending && !data" class="py-10 grid place-items-center text-dimmed">
+      <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin" />
+    </div>
+
+    <!-- Connected -->
+    <UCard v-else-if="connected">
+      <div class="flex items-center gap-3">
+        <UIcon name="i-lucide-credit-card" class="size-10 text-primary" />
+        <div>
+          <p class="font-medium text-highlighted">Stripe</p>
+          <p class="text-sm text-muted">Card payments via Stripe Connect</p>
+        </div>
+        <UBadge
+          v-if="chargesEnabled" class="ml-auto" color="success" variant="subtle" label="Ready"
+        />
+        <UBadge
+          v-else class="ml-auto" color="warning" variant="subtle"
+          :label="detailsSubmitted ? 'Pending review' : 'Setup incomplete'"
+        />
+      </div>
+
+      <UAlert
+        v-if="!chargesEnabled" class="mt-4" color="warning" variant="subtle"
+        icon="i-lucide-triangle-alert"
+        title="Finish Stripe onboarding"
+        :description="detailsSubmitted
+          ? 'Stripe is verifying your details. Card payments unlock once it confirms — check back shortly.'
+          : 'A few details are still needed before you can accept cards.'"
+      />
+
+      <!-- Capability checklist -->
+      <dl class="mt-4 grid grid-cols-3 gap-3 text-center text-sm">
+        <div class="rounded-lg border border-default py-3">
+          <UIcon
+            :name="detailsSubmitted ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'"
+            class="size-5 mx-auto"
+            :class="detailsSubmitted ? 'text-success' : 'text-dimmed'"
+          />
+          <dt class="text-muted mt-1">Details</dt>
+        </div>
+        <div class="rounded-lg border border-default py-3">
+          <UIcon
+            :name="chargesEnabled ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'"
+            class="size-5 mx-auto"
+            :class="chargesEnabled ? 'text-success' : 'text-dimmed'"
+          />
+          <dt class="text-muted mt-1">Charges</dt>
+        </div>
+        <div class="rounded-lg border border-default py-3">
+          <UIcon
+            :name="account?.payouts_enabled ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'"
+            class="size-5 mx-auto"
+            :class="account?.payouts_enabled ? 'text-success' : 'text-dimmed'"
+          />
+          <dt class="text-muted mt-1">Payouts</dt>
+        </div>
+      </dl>
+
+      <div v-if="!chargesEnabled" class="mt-4">
+        <UButton
+          :loading="busy" :disabled="busy" icon="i-lucide-external-link" color="primary"
+          label="Continue Stripe onboarding" @click="startOnboarding"
+        />
+      </div>
+
+      <!-- Accept cards toggle (only meaningful once charges are enabled) -->
+      <div v-else class="mt-5 flex items-center justify-between gap-4 rounded-lg border border-default p-4">
+        <div>
+          <p class="font-medium text-highlighted">Accept card payments</p>
+          <p class="text-sm text-muted">Show Stripe at checkout on your storefront.</p>
+        </div>
+        <USwitch :model-value="stripeEnabled" @update:model-value="toggleStripe" />
+      </div>
+
+      <!-- Commission override -->
+      <div class="mt-4 rounded-lg border border-default p-4">
+        <p class="font-medium text-highlighted">Platform commission</p>
+        <p class="text-sm text-muted">Basis points taken per sale. Leave blank for the platform default. 150 = 1.5%.</p>
+        <div class="mt-3 flex items-center gap-2">
+          <UInput
+            v-model.number="feeBps" type="number" :min="0" :max="10000"
+            placeholder="default" class="w-40" trailing-icon="i-lucide-percent"
+          />
+          <UButton color="neutral" variant="soft" label="Save" icon="i-lucide-save" @click="saveFee" />
+        </div>
+      </div>
+    </UCard>
+
+    <!-- Not connected yet -->
+    <UCard v-else>
+      <p class="text-muted text-sm">
+        Accept card payments with <strong class="text-highlighted">Stripe</strong>. Money goes straight to
+        your own Stripe account; payouts, refunds, and receipts are yours. Set-up takes a couple of minutes.
+      </p>
+      <UButton
+        :loading="busy" :disabled="busy" class="mt-4" icon="i-lucide-credit-card" color="primary"
+        label="Connect Stripe" @click="startOnboarding"
+      />
+    </UCard>
+  </div>
+</template>

@@ -4,9 +4,10 @@ import { stripe } from '~~/server/utils/stripe/client'
 import { safeReturnPath } from '~~/shared/utils/safeReturn'
 
 // Create (once) the store's Express connected account, then return a fresh, single-use
-// onboarding Account Link. The admin Payments page calls this via $fetch and then does
-// window.location = url. Account Links are short-lived, so we always mint a new one —
-// which also serves the "refresh" landing when a link expires mid-onboarding.
+// onboarding Account Link. The shared PaymentsSetup component (mounted both in the
+// onboarding wizard and on the standalone Payments page) calls this via $fetch and then
+// does window.location = url. Account Links are short-lived, so we always mint a new one
+// — which also serves the "refresh" landing when a link expires mid-onboarding.
 export default defineEventHandler(async (event) => {
   const storeId = getRouterParam(event, 'storeId') as string
   await requireStoreAccess(event, storeId, 'admin')
@@ -27,12 +28,30 @@ export default defineEventHandler(async (event) => {
       .select('name, default_country')
       .eq('id', storeId)
       .maybeSingle()
-    const acct = await s.accounts.create({
-      type: 'express',
-      country: (store as { default_country?: string | null } | null)?.default_country || undefined,
-      business_profile: { name: (store as { name?: string } | null)?.name || undefined },
-      metadata: { store_id: storeId },
-    })
+    let acct
+    try {
+      acct = await s.accounts.create({
+        type: 'express',
+        country: (store as { default_country?: string | null } | null)?.default_country || undefined,
+        business_profile: { name: (store as { name?: string } | null)?.name || undefined },
+        metadata: { store_id: storeId },
+      })
+    } catch (err) {
+      // Connect must be activated on the platform account before any connected
+      // account can be created. This is a one-time platform setup at
+      // https://dashboard.stripe.com/connect — not something the seller can fix —
+      // so surface it as a 503 with a clear, actionable message instead of a 500.
+      const msg = err instanceof Error ? err.message : ''
+      if (/signed up for Connect/i.test(msg)) {
+        console.error('[stripe] Connect not enabled on platform account', msg)
+        throw createError({
+          statusCode: 503,
+          statusMessage: 'Stripe Connect is not enabled on the platform account. Enable it at https://dashboard.stripe.com/connect, then retry.',
+        })
+      }
+      console.error('[stripe] account create failed', msg)
+      throw createError({ statusCode: 502, statusMessage: 'Could not start Stripe onboarding' })
+    }
     acctId = acct.id
     const { error } = await admin.from('stripe_accounts').insert({ store_id: storeId, stripe_account_id: acctId })
     if (error) {
@@ -45,17 +64,21 @@ export default defineEventHandler(async (event) => {
   const proto = base.includes('lvh.me') || base.startsWith('localhost') || base.startsWith('127.') ? 'http' : 'https'
   const adminUrl = (path: string) => `${proto}://app.${base}${path}`
 
-  // Optional onboarding-wizard return path; threaded through both links so it
-  // survives the (possibly multi-hop) Stripe round-trip. Validated to a local path.
+  // Stripe bounces the seller back to wherever they launched the flow: the onboarding
+  // wizard when an explicit return path is given (so the flow keeps the wizard's
+  // design), otherwise the standalone Payments page. The landing reads the ?stripe
+  // marker to sync status / re-mint an expired link. Return path validated to a local
+  // path; we append the marker with the right separator for its existing query.
   const body = await readBody(event).catch(() => null)
   const returnTo = safeReturnPath((body as { return?: unknown } | null)?.return)
-  const retQs = returnTo ? `&return=${encodeURIComponent(returnTo)}` : ''
+  const landing = returnTo ?? `/stores/${storeId}/payments`
+  const sep = landing.includes('?') ? '&' : '?'
 
   const link = await s.accountLinks.create({
     account: acctId,
     type: 'account_onboarding',
-    refresh_url: adminUrl(`/stores/${storeId}/payments?stripe=refresh${retQs}`),
-    return_url: adminUrl(`/stores/${storeId}/payments?stripe=return${retQs}`),
+    refresh_url: adminUrl(`${landing}${sep}stripe=refresh`),
+    return_url: adminUrl(`${landing}${sep}stripe=return`),
   })
 
   return { url: link.url }

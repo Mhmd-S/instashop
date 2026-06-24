@@ -42,6 +42,18 @@ export interface AdminProduct {
   category_ids?: string[]
 }
 
+// The editable fields the inline product editor manages. In the onboarding wizard
+// these are lifted up as an unsaved draft so the list reflects edits live and stay
+// in state until the wizard's Next button persists them in one PATCH.
+export interface ProductDraft {
+  title: string
+  description: string | null
+  price_minor: number
+  status: ProductStatus
+  stock: number | null
+  category_ids: string[]
+}
+
 // Trimmed product exposed to the public storefront.
 export interface StorefrontProduct {
   id: string
