@@ -2,7 +2,8 @@ import type { DesignTokens } from '~~/shared/types/theme'
 import { ALLOWED_BODY_FONTS, ALLOWED_HEADING_FONTS } from '~~/shared/types/theme'
 
 // Map the tenant radius scale onto Nuxt UI's base radius (--ui-radius).
-const RADIUS_MAP: Record<DesignTokens['radius'], string> = {
+// Exported so the admin Theme preview renders the exact same corners as the store.
+export const RADIUS_MAP: Record<DesignTokens['radius'], string> = {
   none: '0',
   sm: '.125rem',
   md: '.25rem',
@@ -12,10 +13,19 @@ const RADIUS_MAP: Record<DesignTokens['radius'], string> = {
 }
 
 // Tenant shadow scale → a CSS box-shadow value (exposed as --t-shadow).
-const SHADOW_MAP: Record<DesignTokens['shadow'], string> = {
+export const SHADOW_MAP: Record<DesignTokens['shadow'], string> = {
   none: 'none',
   subtle: '0 1px 2px 0 rgb(0 0 0 / 0.05), 0 1px 3px 0 rgb(0 0 0 / 0.08)',
   pronounced: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 10px 20px -5px rgb(0 0 0 / 0.15)',
+}
+
+// Tenant density → storefront spacing scale (section rhythm + card padding),
+// exposed as --t-space-* and consumed by storefront utilities (py-[var(...)] etc.)
+// and the admin preview. Single source of truth so preview == store.
+export const DENSITY_MAP: Record<DesignTokens['density'], { section: string; sectionLg: string; card: string }> = {
+  compact: { section: '2rem', sectionLg: '2.75rem', card: '.75rem' },
+  cozy: { section: '3rem', sectionLg: '4rem', card: '1rem' },
+  comfortable: { section: '4rem', sectionLg: '5.5rem', card: '1.25rem' },
 }
 
 // Per-tenant theming = override Nuxt UI's design-token CSS variables, so every
@@ -54,6 +64,10 @@ export function tokensToCssVars(t: DesignTokens): string {
     '--t-on-secondary': p.onSecondary,
     '--t-on-accent': p.onAccent,
     '--t-shadow': SHADOW_MAP[t.shadow],
+    // Density spacing for storefront surfaces (section rhythm + card padding).
+    '--t-space-section': DENSITY_MAP[t.density].section,
+    '--t-space-section-lg': DENSITY_MAP[t.density].sectionLg,
+    '--t-space-card': DENSITY_MAP[t.density].card,
     '--t-neutral-50': p.neutral['50'],
     '--t-neutral-100': p.neutral['100'],
     '--t-neutral-200': p.neutral['200'],

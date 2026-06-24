@@ -6,9 +6,13 @@ import type { OnboardingStepKey, SetupStatus } from '~~/shared/onboarding/steps'
 // SetupFlowBar) atop each deep-linked setup page so the flow looks identical
 // everywhere. Each step links back to its wizard step.
 const props = withDefaults(
-  defineProps<{ current: OnboardingStepKey; storeId: string; status?: SetupStatus | null }>(),
-  { status: null },
+  defineProps<{ current?: OnboardingStepKey; storeId: string; status?: SetupStatus | null }>(),
+  { current: undefined, status: null },
 )
+
+// Before a store exists (the wizard's create screen) there's nothing to navigate
+// to, so the steps render as a non-interactive preview rather than dead links.
+const nuxtLink = resolveComponent('NuxtLink')
 
 const currentIndex = computed(() => ONBOARDING_STEPS.findIndex((s) => s.key === props.current))
 
@@ -27,20 +31,26 @@ function isDone(key: OnboardingStepKey, index: number): boolean {
       class="flex items-center"
       :class="i < ONBOARDING_STEPS.length - 1 ? 'flex-1' : ''"
     >
-      <NuxtLink :to="onboardingStepUrl(storeId, s.key)" class="group flex items-center gap-2 rounded-full py-1 transition">
+      <component
+        :is="storeId ? nuxtLink : 'div'"
+        :to="storeId ? onboardingStepUrl(storeId, s.key) : undefined"
+        class="group flex items-center gap-2 rounded-full py-1 transition"
+      >
         <span
           class="grid size-7 shrink-0 place-items-center rounded-full border text-xs font-medium transition"
           :class="current === s.key
             ? 'border-primary bg-primary text-inverted'
             : isDone(s.key, i)
               ? 'border-success bg-success/10 text-success'
-              : 'border-default text-dimmed group-hover:border-primary'"
+              : storeId
+                ? 'border-default text-dimmed group-hover:border-primary'
+                : 'border-default text-dimmed'"
         >
           <UIcon v-if="isDone(s.key, i) && current !== s.key" name="i-lucide-check" class="size-4" />
           <UIcon v-else :name="s.icon" class="size-4" />
         </span>
         <span class="hidden sm:inline text-sm" :class="current === s.key ? 'text-highlighted font-medium' : 'text-muted'">{{ s.label }}</span>
-      </NuxtLink>
+      </component>
       <span v-if="i < ONBOARDING_STEPS.length - 1" class="mx-2 h-px flex-1 bg-default" />
     </li>
   </ol>

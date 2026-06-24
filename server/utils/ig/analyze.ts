@@ -8,7 +8,7 @@ export interface AnalyzedPost {
   productKey: string // stable slug for the exact item; same key => same product (merge)
   productSummary: string // canonical identity (human readable)
   title: string
-  description: string // clean merchandised copy, 1-3 sentences; '' when none
+  description: string // original merchandised copy, 2-4 sentences; '' when none
   priceMinor: number | null
   attributes: Record<string, unknown>
   suggestedCategories: string[]
@@ -21,7 +21,7 @@ export interface AnalyzedPost {
   imageAltByUnit: Record<number, string>
 }
 
-const DESCRIPTION_MAX = 400 // chars; comfortably fits 1-3 merchandising sentences
+const DESCRIPTION_MAX = 500 // chars; comfortably fits 2-4 merchandising sentences
 const BRANDING_ROLE_ENUM = ['lifestyle', 'announcement', 'branding', 'hero_candidate', 'logo_candidate', 'other']
 
 // Primary display image for a post (carousel → first child; video → thumbnail).
@@ -85,7 +85,7 @@ const BATCH_SYSTEM = [
   'is_product: true when the post describes a concrete item the shop SELLS — a price, a product name, sizes, colours, fabric/material, or "available"/"restock" are strong signals of a product. Set false ONLY for clearly non-sellable posts: pure lifestyle/aesthetic shots, sale/event announcements, quotes, behind-the-scenes, or general branding. When a caption clearly names and prices an item, it IS a product.',
   'product_key: for each PRODUCT, a short lowercase slug for the EXACT item (e.g. "aria-linen-midi-dress-oatmeal"). Posts about the SAME item (a restock, another angle, or a styled shot) MUST share the SAME product_key so they merge. A different colour, size, or style is a DIFFERENT product_key. Be conservative: prefer different keys over wrongly merging two different items. Empty product_key for non-products.',
   'title: a concise product name (no emoji/hashtags/price).',
-  'description: clean merchandised copy, 1-3 short sentences, third person, present tense, built from the FACTS in the caption (material, silhouette, features). GROUNDING: never invent a material/size/fit/measurement not stated. FORBIDDEN: hashtags, emoji, @handles, URLs, phone numbers, prices/currency, availability claims, and any call to action ("DM to order", "link in bio", "shop now"). Empty string if not a product.',
+  'description: write ORIGINAL, appealing merchandising copy of 2-4 short sentences for the product — do NOT copy or lightly reword the caption; compose fresh store copy in your own words, third person, present tense, even when the caption is terse or just a name + price. Open with an inviting hook, then describe how the item looks, feels, and can be styled or used, in confident, on-brand retail language (generic appeal like "a versatile wardrobe staple" or "effortlessly elegant" is welcome). Stay consistent with any concrete facts the caption DOES give (material, colour, sizes, silhouette) and weave them in, but do NOT fabricate hard specifications it never states — no invented measurements, fabric composition, care instructions, origin, or certifications, and no invented price. FORBIDDEN tokens: hashtags, emoji, @handles, URLs, phone numbers, prices/currency, stock-status claims ("in stock", "sold out", "restocking"), and any call to action ("DM to order", "link in bio", "shop now"). Empty string if not a product.',
   'price: extract ONLY if a price is explicitly written in the caption.',
   'categories: assign 1-2 BROAD, browsable categories per product — like the nav menu of a real shop (e.g. "dresses", "skirts", "tops", "sets", "bags", "accessories", "home", "mugs"). CONSISTENCY IS CRITICAL: across ALL posts use the SAME category name for similar items (always "dresses", never "dress" for one and "midi dress" for another). Use plural nouns. Do NOT use materials ("linen"), colours, sizes, occasions, or ultra-specific sub-types ("midi dress", "wrap skirt", "scrunchie") as categories — fold those into the broad category. Keep the whole shop to a small, coherent set of categories.',
   'When not a product, set branding_role to one of: lifestyle, announcement, branding, hero_candidate, logo_candidate, other.',
@@ -105,7 +105,7 @@ const BATCH_SCHEMA = {
           confidence: { type: 'number' },
           product_key: { type: 'string' },
           title: { type: 'string' },
-          description: { type: 'string', maxLength: 400 },
+          description: { type: 'string', maxLength: 500 },
           price: { type: 'number' },
           currency_guess: { type: 'string' },
           categories: { type: 'array', items: { type: 'string' } },
@@ -190,8 +190,11 @@ export function validateBatchPost(raw: unknown): AnalyzedPost {
   const isProduct = r.is_product === true
   const productKey = isProduct ? normalizeProductKey(r.product_key) : ''
 
+  // Safety net over the model's own copy: strip any forbidden tokens (emoji,
+  // hashtags, URLs, phone, price, CTA) it slipped in, but keep the trim generous
+  // so well-formed 2-4 sentence merchandising copy is not chopped.
   let description = cleanCaption(typeof r.description === 'string' ? r.description : '', {
-    maxSentences: 3,
+    maxSentences: 4,
     maxChars: DESCRIPTION_MAX,
   })
   const norm = (s: string) => s.replace(/[.!?\s]+$/, '').trim().toLowerCase()

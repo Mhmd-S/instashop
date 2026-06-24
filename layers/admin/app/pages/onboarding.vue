@@ -66,14 +66,15 @@ const igConnectUrl = computed(
     `&return=${encodeURIComponent(onboardingStepUrl(storeId.value ?? '', 'instagram'))}`,
 )
 
-// Import runs inline in the wizard, so connect → import → Next all happen here
-// instead of bouncing out to the standalone Instagram settings page.
+// Posts import automatically once Instagram is connected — no button needed.
 const productCount = computed(() => status.value?.steps.products.count ?? 0)
 const importing = ref(false)
 const igMsg = ref<string | null>(null)
+const igError = ref(false)
 async function importPosts() {
   importing.value = true
   igMsg.value = null
+  igError.value = false
   try {
     const res = await $fetch(`/api/admin/stores/${storeId.value}/ig/sync`, { method: 'POST' })
     const bits = [`${res.imported} new product${res.imported === 1 ? '' : 's'}`]
@@ -86,9 +87,77 @@ async function importPosts() {
       (res.usedAi ? '.' : ' (no AI key — used a simple import).')
     await refreshStatus()
   } catch (e) {
-    igMsg.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Import failed'
+    igError.value = true
+    igMsg.value =
+      ((e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Import failed') +
+      ' — refresh the page to try again.'
   } finally {
     importing.value = false
+  }
+}
+
+// Fire the import the moment the wizard shows a connected Instagram step — client
+// only (never during SSR), exactly once per visit.
+const igConnected = computed(() => !!status.value?.steps.instagram.connected)
+let autoImportTried = false
+if (import.meta.client) {
+  watchEffect(() => {
+    if (currentKey.value === 'instagram' && igConnected.value && !autoImportTried) {
+      autoImportTried = true
+      importPosts()
+    }
+  })
+}
+
+// Per-step review acknowledgements for the auto-filled steps. Each must be
+// explicitly marked reviewed before it counts as done (setup-status gates on this),
+// then we advance to the next step.
+const reviewing = ref<string | null>(null)
+const reviewError = ref<string | null>(null)
+async function markReviewed(step: 'theme' | 'products' | 'branding') {
+  reviewing.value = step
+  reviewError.value = null
+  try {
+    await $fetch(`/api/admin/stores/${storeId.value}/onboarding/review`, { method: 'POST', body: { step } })
+    await refreshStatus()
+    next()
+  } catch (e) {
+    reviewError.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not save — please try again.'
+  } finally {
+    reviewing.value = null
+  }
+}
+// A stale error from one step shouldn't linger when the seller moves to another.
+watch(currentKey, () => { reviewError.value = null })
+
+// The inline editors have no Save button of their own — the wizard owns the save.
+// We hold refs to the ones that need persisting and call their exposed save()
+// before advancing.
+const themeEditor = ref<{ save: () => Promise<boolean> } | null>(null)
+const productsReview = ref<{ save: () => Promise<boolean> } | null>(null)
+const savingStep = ref(false)
+
+// "Next" is the single forward control: it first persists the open inline editor
+// (theme/products), then on an auto-filled step records the review (which also
+// advances); everywhere else it just advances. A failed save is surfaced inline by
+// the editor, so we stop short of advancing.
+async function advance() {
+  const key = currentKey.value
+  const editor = key === 'theme' ? themeEditor.value : key === 'products' ? productsReview.value : null
+  if (editor) {
+    savingStep.value = true
+    let ok = false
+    try {
+      ok = await editor.save()
+    } finally {
+      savingStep.value = false
+    }
+    if (!ok) return
+  }
+  if ((key === 'theme' || key === 'products' || key === 'branding') && !doneOf(key)) {
+    markReviewed(key)
+  } else {
+    next()
   }
 }
 
@@ -143,7 +212,12 @@ async function createStore() {
       <div class="mb-6">
         <UButton to="/dashboard" icon="i-lucide-arrow-left" label="Back to dashboard" variant="link" color="neutral" size="sm" class="-ml-2.5" />
         <h1 class="text-2xl font-bold text-highlighted mt-1">Create your store</h1>
-        <p class="text-muted text-sm mt-1">Pick a name and your storefront address to get started.</p>
+        <p class="text-muted text-sm mt-1">First, the basics — then we'll guide you through each step below.</p>
+      </div>
+
+      <!-- Same stepper as the rest of the wizard, in a pre-store preview state. -->
+      <div class="mb-8">
+        <OnboardingStepper :store-id="''" :status="null" />
       </div>
 
       <UCard>
@@ -179,20 +253,6 @@ async function createStore() {
           />
         </form>
       </UCard>
-
-      <!-- Preview the flow ahead, so step 0 reads as part of the same journey. -->
-      <div class="mt-6">
-        <p class="text-[11px] font-medium uppercase tracking-wide text-dimmed mb-2">Up next</p>
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          <div
-            v-for="s in ONBOARDING_STEPS.slice(0, 5)" :key="s.key"
-            class="flex items-center gap-2 rounded-lg border border-default px-3 py-2 text-sm"
-          >
-            <UIcon :name="s.icon" class="size-4 shrink-0 text-dimmed" />
-            <span class="text-muted">{{ s.label }}</span>
-          </div>
-        </div>
-      </div>
     </template>
 
     <!-- ============ Steps 1..5: guided setup ============ -->
@@ -210,9 +270,9 @@ async function createStore() {
         <OnboardingStepper :current="currentKey" :store-id="storeId ?? ''" :status="status" />
       </div>
 
-      <UCard>
-        <!-- Instagram -->
-        <div v-if="currentKey === 'instagram'" class="space-y-4">
+      <!-- Instagram -->
+      <UCard v-if="currentKey === 'instagram'">
+        <div class="space-y-4">
           <div class="flex items-start gap-3">
             <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-instagram" class="size-5" /></div>
             <div>
@@ -239,89 +299,73 @@ async function createStore() {
             />
           </template>
 
-          <!-- Connected → import right here, then continue with “Next”. -->
+          <!-- Connected → posts import automatically; just continue with “Next”. -->
           <template v-else>
             <UAlert
               color="success" variant="soft" icon="i-lucide-circle-check"
               title="Instagram connected"
               :description="`${productCount} product${productCount === 1 ? '' : 's'} in your store so far.`"
             />
-            <UAlert v-if="igMsg" color="info" variant="soft" icon="i-lucide-info" :description="igMsg" />
-            <div class="flex flex-wrap items-center gap-3">
-              <UButton
-                :loading="importing" :disabled="importing"
-                color="primary" icon="i-lucide-upload"
-                :label="importing ? 'Importing…' : (productCount > 0 ? 'Import new posts' : 'Import posts')"
-                @click="importPosts"
-              />
-              <UButton :to="deep('instagram')" variant="soft" color="neutral" icon="i-lucide-settings-2" label="Manage" />
+            <div v-if="importing" class="flex items-center gap-2 text-sm text-muted">
+              <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
+              Importing your posts…
             </div>
+            <UAlert
+              v-else-if="igMsg"
+              :color="igError ? 'warning' : 'info'" variant="soft"
+              :icon="igError ? 'i-lucide-triangle-alert' : 'i-lucide-info'"
+              :description="igMsg"
+            />
             <p class="text-xs text-dimmed">
               Imported items land as drafts under Products — set prices and publish there. Hit “Next” to keep going.
             </p>
           </template>
         </div>
+      </UCard>
 
-        <!-- Theme -->
-        <div v-else-if="currentKey === 'theme'" class="space-y-4">
-          <div class="flex items-start gap-3">
-            <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-palette" class="size-5" /></div>
-            <div>
-              <h2 class="font-semibold text-highlighted">Make it yours</h2>
-              <p class="text-sm text-muted mt-0.5">
-                We auto-generate a palette, fonts and mood from your logo or Instagram profile — then you can tweak anything.
-              </p>
-            </div>
-          </div>
-          <UAlert v-if="doneOf('theme')" color="success" variant="soft" icon="i-lucide-circle-check" title="Theme configured" description="Your storefront has a custom theme." />
-          <UButton :to="deep('theme')" color="primary" icon="i-lucide-palette" :label="doneOf('theme') ? 'Edit theme' : 'Customize theme'" />
-        </div>
-
-        <!-- Products & categories -->
-        <div v-else-if="currentKey === 'products'" class="space-y-4">
-          <div class="flex items-start gap-3">
-            <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-package" class="size-5" /></div>
-            <div>
-              <h2 class="font-semibold text-highlighted">Products &amp; categories</h2>
-              <p class="text-sm text-muted mt-0.5">Review imported items, set prices, add your own, and organize them with categories.</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg border border-default p-3">
-              <p class="text-2xl font-bold text-highlighted">{{ status?.steps.products.count ?? 0 }}</p>
-              <p class="text-xs text-muted">product{{ (status?.steps.products.count ?? 0) === 1 ? '' : 's' }}</p>
-            </div>
-            <div class="rounded-lg border border-default p-3">
-              <p class="text-2xl font-bold text-highlighted">{{ status?.steps.categories.count ?? 0 }}</p>
-              <p class="text-xs text-muted">categor{{ (status?.steps.categories.count ?? 0) === 1 ? 'y' : 'ies' }}</p>
-            </div>
-          </div>
-          <div class="flex flex-wrap gap-3">
-            <UButton :to="deep('products')" color="primary" icon="i-lucide-package" :label="(status?.steps.products.count ?? 0) > 0 ? 'Manage products' : 'Add products'" />
-            <UButton :to="deep('categories')" variant="soft" color="neutral" icon="i-lucide-tags" label="Categories" />
+      <!-- Theme — review/edit inline -->
+      <div v-else-if="currentKey === 'theme'" class="space-y-4">
+        <div class="flex items-start gap-3">
+          <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-palette" class="size-5" /></div>
+          <div>
+            <h2 class="font-semibold text-highlighted">Make it yours</h2>
+            <p class="text-sm text-muted mt-0.5">
+              We generated a palette, fonts and mood from your logo — review and tweak anything below.
+            </p>
           </div>
         </div>
+        <ThemeEditor ref="themeEditor" :store-id="storeId ?? ''" embedded />
+      </div>
 
-        <!-- Branding -->
-        <div v-else-if="currentKey === 'branding'" class="space-y-4">
-          <div class="flex items-start gap-3">
-            <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-images" class="size-5" /></div>
-            <div>
-              <h2 class="font-semibold text-highlighted">Branding &amp; hero</h2>
-              <p class="text-sm text-muted mt-0.5">
-                Pick a lifestyle post as your storefront hero banner. Optional, but it makes a great first impression.
-              </p>
-            </div>
+      <!-- Products — review imported items inline -->
+      <div v-else-if="currentKey === 'products'" class="space-y-4">
+        <div class="flex items-start gap-3">
+          <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-package" class="size-5" /></div>
+          <div>
+            <h2 class="font-semibold text-highlighted">Review your products</h2>
+            <p class="text-sm text-muted mt-0.5">Set prices, edit details, add photos and publish. Imported items start as drafts — expand any to edit.</p>
           </div>
-          <UAlert v-if="status?.steps.branding.heroSet" color="success" variant="soft" icon="i-lucide-circle-check" title="Hero banner set" />
-          <UButton :to="deep('branding')" color="primary" icon="i-lucide-images" label="Choose branding" />
-          <p v-if="(status?.steps.branding.count ?? 0) === 0" class="text-xs text-dimmed">
-            Branding posts appear here after an Instagram import — connect Instagram to populate this.
-          </p>
         </div>
+        <ProductsReview ref="productsReview" :store-id="storeId ?? ''" />
+      </div>
 
-        <!-- Payments -->
-        <div v-else-if="currentKey === 'payments'" class="space-y-4">
+      <!-- Branding — review/pick hero inline -->
+      <div v-else-if="currentKey === 'branding'" class="space-y-4">
+        <div class="flex items-start gap-3">
+          <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-images" class="size-5" /></div>
+          <div>
+            <h2 class="font-semibold text-highlighted">Branding &amp; hero</h2>
+            <p class="text-sm text-muted mt-0.5">
+              Pick a lifestyle post as your storefront hero banner. These were captured during import.
+            </p>
+          </div>
+        </div>
+        <BrandingReview :store-id="storeId ?? ''" />
+      </div>
+
+      <!-- Payments -->
+      <UCard v-else-if="currentKey === 'payments'">
+        <div class="space-y-4">
           <div class="flex items-start gap-3">
             <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-credit-card" class="size-5" /></div>
             <div>
@@ -346,9 +390,11 @@ async function createStore() {
             <UButton variant="ghost" color="neutral" label="Skip — use cash on delivery" @click="next" />
           </div>
         </div>
+      </UCard>
 
-        <!-- Preview -->
-        <div v-else class="space-y-5">
+      <!-- Preview -->
+      <UCard v-else>
+        <div class="space-y-5">
           <div class="text-center">
             <div class="mx-auto mb-3 grid size-12 place-items-center rounded-xl bg-primary/10 text-primary"><UIcon name="i-lucide-rocket" class="size-6" /></div>
             <h2 class="text-xl font-bold text-highlighted">Your store is live 🎉</h2>
@@ -379,9 +425,14 @@ async function createStore() {
       </UCard>
 
       <!-- nav -->
+      <UAlert v-if="reviewError" color="error" variant="soft" :title="reviewError" icon="i-lucide-circle-alert" class="mt-6" />
       <div class="mt-6 flex items-center justify-between">
-        <UButton :disabled="currentIndex === 0" variant="ghost" color="neutral" icon="i-lucide-arrow-left" label="Back" @click="back" />
-        <UButton v-if="currentKey !== 'preview'" color="primary" trailing-icon="i-lucide-arrow-right" label="Next" @click="next" />
+        <UButton :disabled="currentIndex === 0 || reviewing !== null || savingStep" variant="ghost" color="neutral" icon="i-lucide-arrow-left" label="Back" @click="back" />
+        <UButton
+          v-if="currentKey !== 'preview'"
+          color="primary" trailing-icon="i-lucide-arrow-right" label="Next"
+          :loading="reviewing !== null || savingStep" :disabled="reviewing !== null || savingStep" @click="advance"
+        />
         <UButton v-else to="/dashboard" color="primary" trailing-icon="i-lucide-check" label="Finish" />
       </div>
     </template>

@@ -29,6 +29,7 @@ watchEffect(() => {
   }
 })
 const { mountPaymentElement, confirm } = useStripeCheckout()
+const cta = useStoreCta()
 
 const methods = computed<string[]>(() => store.value?.payment_methods ?? ['cod'])
 const hasStripe = computed(() => methods.value.includes('stripe'))
@@ -211,7 +212,7 @@ async function pay() {
         <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" />
 
         <UButton
-          type="submit" block size="lg" color="primary"
+          type="submit" block size="lg" color="primary" v-bind="cta"
           :loading="loading" :disabled="loading || !contact.email"
           :label="loading ? 'Working…' : method === 'stripe' ? 'Continue to payment' : 'Place order'"
         />
@@ -229,7 +230,7 @@ async function pay() {
         <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" />
 
         <UButton
-          block size="lg" color="primary"
+          block size="lg" color="primary" v-bind="cta"
           :loading="paying" :disabled="paying"
           :label="paying ? 'Processing…' : `Pay ${formatPrice(payAmount, payCurrency)}`"
           @click="pay"

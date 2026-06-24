@@ -40,6 +40,10 @@ async function remove(p: AdminProduct) {
       <UButton :to="withReturn(`/stores/${storeId}/products/new`)" icon="i-lucide-plus" label="New product" />
     </div>
 
+    <div class="mb-6 rounded-xl border border-default p-4">
+      <StoreCurrencySelect :store-id="storeId" @changed="() => refresh()" />
+    </div>
+
     <UCard v-if="!products.length">
       <div class="text-center py-12">
         <UIcon name="i-lucide-package" class="size-10 text-dimmed mx-auto" />

@@ -1,14 +1,23 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
-/*
-  Nuxt UI owns the global design system (admin + marketing). The storefront overrides
-  Nuxt UI's --ui-* variables per tenant (app/plugins/theme.server.ts) so its components
-  reflect the seller's vibe. The only custom tokens are the per-tenant fonts + a brand
-  radius utility, both driven by injected --t-* variables (fall back to Nuxt UI defaults).
-*/
 @theme {
-  --radius-brand: var(--t-radius, var(--ui-radius, 0.5rem));
-  --font-heading: var(--t-font-heading, ui-sans-serif), system-ui, sans-serif;
-  --font-body: var(--t-font-body, ui-sans-serif), system-ui, sans-serif;
+  --font-sans: 'Poppins', sans-serif;
+  /* Storefront heading face. Tenants set --t-font-heading at runtime (cssVars.ts);
+     other surfaces fall back to the sans stack. Registering it here is what makes
+     the `font-heading` utility (used across the storefront) actually emit a rule. */
+  --font-heading: var(--t-font-heading, var(--font-sans));
+  /* Brand accent — a secondary pop colour tenants set via --t-accent; falls back to
+     the primary brand colour so non-themed surfaces stay coherent. Enables
+     bg-accent / text-accent / border-accent / ring-accent utilities. */
+  --color-accent: var(--t-accent, var(--ui-primary));
+}
+
+/* Density spacing defaults so the storefront's var-driven utilities resolve even
+   when a store has no active theme. Themed stores override these in :root via
+   cssVars.ts (tokensToCssVars). */
+:root {
+  --t-space-section: 3rem;
+  --t-space-section-lg: 4rem;
+  --t-space-card: 1rem;
 }

@@ -7,6 +7,7 @@ export function useTenant() {
     store: null,
     hostInfo: null,
     logo: null,
+    buttonStyle: null,
   }))
   return {
     state,

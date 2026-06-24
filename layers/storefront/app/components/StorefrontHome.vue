@@ -4,6 +4,7 @@ import type { ResolvedStore } from '~~/shared/types/tenant'
 const props = defineProps<{ store: ResolvedStore | null }>()
 
 const { logo } = useTenant()
+const cta = useStoreCta()
 
 const { data } = await useFetch('/api/storefront/products')
 const products = computed(() => data.value?.products ?? [])
@@ -50,7 +51,7 @@ function scrollTo(id: string) {
           </div>
           <p class="flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-muted"
              :class="hero?.public_url ? '' : 'justify-center'">
-            <span class="h-px w-7 bg-primary" />@{{ props.store?.subdomain }}
+            <span class="h-px w-7 bg-accent" />@{{ props.store?.subdomain }}
           </p>
 
           <h1 class="mt-4 font-heading text-5xl font-semibold leading-[0.95] tracking-tight text-balance text-highlighted sm:text-7xl">
@@ -65,7 +66,7 @@ function scrollTo(id: string) {
           </p>
 
           <div class="mt-8 flex flex-wrap gap-3" :class="hero?.public_url ? '' : 'justify-center'">
-            <UButton size="lg" color="primary" label="Shop all" trailing-icon="i-lucide-arrow-down" @click="scrollTo('products')" />
+            <UButton size="lg" color="primary" v-bind="cta" label="Shop all" trailing-icon="i-lucide-arrow-down" @click="scrollTo('products')" />
             <UButton
               v-if="categories.length"
               size="lg" color="neutral" variant="subtle" label="Browse categories"
@@ -76,7 +77,7 @@ function scrollTo(id: string) {
 
         <!-- Framed lifestyle shot with an offset brand-colour block (signature) -->
         <div v-if="hero?.public_url" class="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div class="absolute -bottom-3 -left-3 h-full w-full rounded-[var(--ui-radius)] bg-primary/15" aria-hidden="true" />
+          <div class="absolute -bottom-3 -left-3 h-full w-full rounded-[var(--ui-radius)] bg-accent/15" aria-hidden="true" />
           <div class="relative overflow-hidden rounded-[var(--ui-radius)] border border-default shadow-[var(--t-shadow)]">
             <img :src="hero.public_url" :alt="hero.caption ?? props.store?.name ?? 'Store'" class="aspect-[4/5] size-full object-cover">
           </div>
@@ -85,10 +86,10 @@ function scrollTo(id: string) {
     </section>
 
     <!-- Shop by category: the store's real taxonomy as browsable tiles -->
-    <section v-if="categories.length" id="categories" class="scroll-mt-20 border-b border-default py-12 sm:py-16">
+    <section v-if="categories.length" id="categories" class="scroll-mt-20 border-b border-default py-(--t-space-section) sm:py-(--t-space-section-lg)">
       <UContainer>
         <p class="flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-          <span class="h-px w-7 bg-primary" />Shop by category
+          <span class="h-px w-7 bg-accent" />Shop by category
         </p>
         <ul class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           <li v-for="c in categories" :key="c.slug">
@@ -108,11 +109,11 @@ function scrollTo(id: string) {
     </section>
 
     <!-- Products -->
-    <UContainer id="products" class="scroll-mt-20 py-12 sm:py-16">
+    <UContainer id="products" class="scroll-mt-20 py-(--t-space-section) sm:py-(--t-space-section-lg)">
       <div class="mb-7 flex items-end justify-between gap-4">
         <div>
           <p class="flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-            <span class="h-px w-7 bg-primary" />The collection
+            <span class="h-px w-7 bg-accent" />The collection
           </p>
           <h2 class="mt-2 font-heading text-2xl font-semibold tracking-tight text-highlighted sm:text-3xl">Shop all</h2>
         </div>

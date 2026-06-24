@@ -4,6 +4,7 @@ import { formatPrice } from '~~/shared/types/product'
 definePageMeta({ surface: 'store' })
 
 const cart = useCart()
+const cta = useStoreCta()
 const subtotalMinor = ref(0)
 const currency = ref('USD')
 const priceMap = ref<Record<string, { available: boolean; unitPriceMinor: number }>>({})
@@ -76,7 +77,7 @@ watch(() => cart.items.map((i) => `${i.productId}:${i.quantity}`).join(','), rev
             <span class="text-lg font-semibold text-highlighted">{{ formatPrice(subtotalMinor, currency) }}</span>
           </div>
 
-          <UButton to="/checkout" label="Checkout" color="primary" size="lg" block trailing-icon="i-lucide-arrow-right" />
+          <UButton to="/checkout" label="Checkout" color="primary" v-bind="cta" size="lg" block trailing-icon="i-lucide-arrow-right" />
         </div>
       </ClientOnly>
     </UContainer>

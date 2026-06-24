@@ -1174,6 +1174,7 @@ export type Database = {
           name: string
           next_order_seq: number
           notify_email: string | null
+          onboarding_reviewed: Json
           owner_id: string
           payment_methods: Database["public"]["Enums"]["payment_method"][]
           status: Database["public"]["Enums"]["store_status"]
@@ -1192,6 +1193,7 @@ export type Database = {
           name: string
           next_order_seq?: number
           notify_email?: string | null
+          onboarding_reviewed?: Json
           owner_id: string
           payment_methods?: Database["public"]["Enums"]["payment_method"][]
           status?: Database["public"]["Enums"]["store_status"]
@@ -1210,6 +1212,7 @@ export type Database = {
           name?: string
           next_order_seq?: number
           notify_email?: string | null
+          onboarding_reviewed?: Json
           owner_id?: string
           payment_methods?: Database["public"]["Enums"]["payment_method"][]
           status?: Database["public"]["Enums"]["store_status"]

@@ -20,7 +20,7 @@ defineProps<{ products: StorefrontProduct[]; emptyText?: string }>()
         <UCard
           variant="outline"
           class="overflow-hidden transition duration-200 group-hover:shadow-lg group-hover:ring-2 group-hover:ring-primary/60 motion-safe:group-hover:-translate-y-1"
-          :ui="{ header: 'p-0', body: 'p-3 sm:p-4' }"
+          :ui="{ header: 'p-0', body: 'p-(--t-space-card)' }"
         >
           <template #header>
             <div class="aspect-square overflow-hidden bg-muted">

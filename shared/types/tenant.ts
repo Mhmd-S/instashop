@@ -1,4 +1,5 @@
 import type { CheckoutConfig } from './checkout'
+import type { DesignTokens } from './theme'
 
 export type Surface = 'marketing' | 'admin' | 'store'
 
@@ -39,4 +40,8 @@ export interface TenantState {
   store: ResolvedStore | null
   hostInfo: HostInfo | null
   logo: StoreLogo | null
+  // Button style from the active theme — drives the look of the store's primary
+  // CTAs (everything else theme-related is applied via CSS variables). Null when
+  // the store has no active theme or off the storefront surface.
+  buttonStyle: DesignTokens['buttonStyle'] | null
 }

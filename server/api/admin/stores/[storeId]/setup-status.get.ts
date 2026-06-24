@@ -11,13 +11,14 @@ export default defineEventHandler(async (event) => {
   const db = await serverSupabaseClient(event)
   const { data: store } = await db
     .from('stores')
-    .select('id, name, subdomain, status, active_theme_id, payment_methods')
+    .select('id, name, subdomain, status, active_theme_id, payment_methods, onboarding_reviewed')
     .eq('id', storeId)
     .maybeSingle()
   if (!store) throw createError({ statusCode: 404, statusMessage: 'Store not found' })
   const s = store as {
     id: string; name: string; subdomain: string; status: string
     active_theme_id: string | null; payment_methods: string[] | null
+    onboarding_reviewed: Record<string, boolean> | null
   }
 
   const admin = supabaseAdmin(event)
@@ -43,15 +44,18 @@ export default defineEventHandler(async (event) => {
   // Payments mirror the Payments page: "done" once Stripe can actually charge.
   const chargesEnabled = !!(stripeAcct.data as { charges_enabled?: boolean } | null)?.charges_enabled
   const stripeEnabled = (s.payment_methods ?? []).includes('stripe')
+  // Theme/products/branding are auto-filled by the IG import, so they only count as
+  // "done" once the seller has explicitly reviewed each inline in the wizard.
+  const reviewed = s.onboarding_reviewed ?? {}
 
   return {
     store: { id: s.id, name: s.name, subdomain: s.subdomain, status: s.status },
     steps: {
       instagram: { done: igActive, connected: igActive },
-      theme: { done: !!s.active_theme_id },
-      products: { done: productCount > 0, count: productCount },
+      theme: { done: !!reviewed.theme },
+      products: { done: !!reviewed.products, count: productCount },
       categories: { count: categories.count ?? 0 },
-      branding: { done: brandingCount > 0, count: brandingCount, heroSet: (heroes.count ?? 0) > 0 },
+      branding: { done: !!reviewed.branding, count: brandingCount, heroSet: (heroes.count ?? 0) > 0 },
       payments: { done: chargesEnabled, connected: !!stripeAcct.data, chargesEnabled, enabled: stripeEnabled },
     },
   }

@@ -21,6 +21,7 @@ const gallery = computed(() => {
 const selected = ref(0)
 
 const cart = useCart()
+const cta = useStoreCta()
 const added = ref(false)
 function addToCart() {
   cart.add({
@@ -87,6 +88,7 @@ function addToCart() {
           <div class="mt-8 flex flex-wrap items-center gap-3">
             <UButton
               color="primary"
+              v-bind="cta"
               size="lg"
               icon="i-lucide-shopping-cart"
               label="Add to cart"

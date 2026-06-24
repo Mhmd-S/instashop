@@ -10,17 +10,20 @@ export interface OnboardingStep {
   icon: string
 }
 
+// Order: Instagram first (connect + auto-import), then Products (review what was
+// imported), then the rest. Everything downstream (wizard nav, stepper, counts)
+// derives from this order.
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   { key: 'instagram', label: 'Instagram', icon: 'i-lucide-instagram' },
-  { key: 'theme', label: 'Theme', icon: 'i-lucide-palette' },
   { key: 'products', label: 'Products', icon: 'i-lucide-package' },
+  { key: 'theme', label: 'Theme', icon: 'i-lucide-palette' },
   { key: 'branding', label: 'Branding', icon: 'i-lucide-images' },
   { key: 'payments', label: 'Payments', icon: 'i-lucide-credit-card' },
   { key: 'preview', label: 'Preview', icon: 'i-lucide-rocket' },
 ]
 
 // The five steps with a completion signal (everything except the final preview).
-export const TRACKED_STEPS: OnboardingStepKey[] = ['instagram', 'theme', 'products', 'branding', 'payments']
+export const TRACKED_STEPS: OnboardingStepKey[] = ['instagram', 'products', 'theme', 'branding', 'payments']
 
 // Shape returned by GET /api/admin/stores/:id/setup-status.
 export interface SetupStatus {

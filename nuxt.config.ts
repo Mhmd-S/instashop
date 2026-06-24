@@ -16,6 +16,13 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // Enforce light mode app-wide: disabling Nuxt UI's color-mode integration
+  // stops the `.dark` class from ever being applied. The app has no color-mode
+  // toggle and no `dark:` variants, so nothing depends on it.
+  ui: {
+    colorMode: false,
+  },
+
   vite: {
     // dev only: allow any Host (we run behind a cloudflared tunnel for IG OAuth)
     server: { allowedHosts: true },
