@@ -50,7 +50,7 @@ export default defineEventHandler(async (event) => {
       <text x="96" y="430" font-family="'DejaVu Sans','Helvetica Neue',Arial,sans-serif" font-size="${fontSize}" font-weight="700" fill="${p.fg}">${escapeXml(name)}</text>
       <text x="96" y="492" font-family="'DejaVu Sans','Helvetica Neue',Arial,sans-serif" font-size="32" fill="${p.muted}">${escapeXml(host)}</text>
       <circle cx="104" cy="552" r="7" fill="${p.primary}"/>
-      <text x="122" y="561" font-family="'DejaVu Sans','Helvetica Neue',Arial,sans-serif" font-size="26" fill="${p.muted}">Powered by Insteshop</text>
+      <text x="122" y="561" font-family="'DejaVu Sans','Helvetica Neue',Arial,sans-serif" font-size="26" fill="${p.muted}">Powered by Chanis</text>
     </svg>`
 
     const composites: sharp.OverlayOptions[] = []

@@ -63,7 +63,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'en' },
-      title: 'Vendly',
+      title: 'Chanis',
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         { rel: 'icon', sizes: '32x32', href: '/favicon.ico' },
@@ -97,7 +97,7 @@ export default defineNuxtConfig({
     // We resolve auth/redirects ourselves (admin host only); don't let the module redirect.
     redirect: false,
     types: '~~/shared/types/database.types.ts',
-    // H8: seller/admin cookie is HOST-scoped to app.* — never Domain=.insteshop.app
+    // H8: seller/admin cookie is HOST-scoped to app.* — never Domain=.chanis.app
     cookieName: 'sb',
     cookieOptions: {
       sameSite: 'lax',
@@ -125,8 +125,8 @@ export default defineNuxtConfig({
     public: {
       supabaseUrl: '',
       // overridden in dev by NUXT_PUBLIC_APP_BASE_DOMAIN=lvh.me:3000
-      appBaseDomain: 'insteshop.app',
-      siteUrl: 'https://insteshop.app',
+      appBaseDomain: 'chanis.app',
+      siteUrl: 'https://chanis.app',
       stripePublishableKey: '', // pk_… — the platform key (Connect destination charges)
     },
   },

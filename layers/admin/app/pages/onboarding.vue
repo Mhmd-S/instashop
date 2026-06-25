@@ -232,7 +232,7 @@ async function createStore() {
           </UFormField>
           <UFormField label="Subdomain" name="subdomain">
             <UInput v-model="subdomain" type="text" required placeholder="acme" class="w-full" :ui="{ base: 'lowercase' }">
-              <template #trailing><span class="text-sm text-muted">.insteshop.app</span></template>
+              <template #trailing><span class="text-sm text-muted">.chanis.app</span></template>
             </UInput>
             <template v-if="availability" #help>
               <span v-if="availability.available" class="text-success inline-flex items-center gap-1">

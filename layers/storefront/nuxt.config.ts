@@ -1,2 +1,2 @@
-// Storefront layer: public customer-facing store on <store>.insteshop.app.
+// Storefront layer: public customer-facing store on <store>.chanis.app.
 export default defineNuxtConfig({})

@@ -1,2 +1,2 @@
-// Marketing layer: apex (insteshop.app) landing / signup.
+// Marketing layer: apex (chanis.app) landing / signup.
 export default defineNuxtConfig({})

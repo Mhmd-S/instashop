@@ -34,7 +34,7 @@ export async function notifyNewOrder(opts: {
           .join('')}</ul>`
       : ''
     await resend.emails.send({
-      from: cfg.resendFrom || 'Vendly <orders@insteshop.app>',
+      from: cfg.resendFrom || 'Chanis <orders@chanis.app>',
       to: opts.to,
       subject: `New order ${opts.orderNumber} — ${opts.storeName}`,
       html: `<p>You have a new order <strong>${escapeHtml(opts.orderNumber)}</strong> totalling ${total} ${escapeHtml(opts.currency)}.</p>${answersHtml}`,

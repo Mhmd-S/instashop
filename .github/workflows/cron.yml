@@ -6,8 +6,8 @@ name: Scheduled cron jobs
 #
 # Setup (one-time):
 #   - Secret  CRON_SECRET   = same value as NUXT_CRON_SECRET in Railway
-#   - Variable CRON_BASE_URL = public base URL, e.g. https://app.insteshop.app
-#     (the Railway service URL also works before the custom domain is live)
+#   - Variable CRON_BASE_URL = public base URL
+#     e.g. https://app.chanis.app (the Railway service URL also works pre-domain)
 # NOTE: `schedule` only runs from the DEFAULT branch, in UTC, and may be delayed
 # a few minutes under load — fine for daily jobs.
 on:

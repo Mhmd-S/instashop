@@ -134,7 +134,7 @@ const featured = computed(() =>
           <StorefrontBrand />
           <p class="mt-1.5 text-sm text-muted">@{{ props.store?.subdomain }}</p>
         </div>
-        <p class="text-xs text-muted">Powered by Vendly</p>
+        <p class="text-xs text-muted">Powered by Chanis</p>
       </UContainer>
     </footer>
   </div>
