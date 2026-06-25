@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { safeReturnPath } from '~~/shared/utils/safeReturn'
+import { igErrorMessage } from '~~/shared/onboarding/igErrors'
 
 definePageMeta({ surface: 'admin', layout: 'admin', requiresAuth: true })
 
@@ -27,15 +28,20 @@ const connectUrl = computed(
 
 const syncing = ref(false)
 const msg = ref<string | null>(null)
+const msgIsError = ref(false)
 
 onMounted(() => {
   if (route.query.connected) msg.value = 'Instagram connected.'
-  if (route.query.ig_error) msg.value = `Connect failed: ${route.query.ig_error}`
+  if (route.query.ig_error) {
+    msg.value = igErrorMessage(String(route.query.ig_error))
+    msgIsError.value = true
+  }
 })
 
 async function sync() {
   syncing.value = true
   msg.value = null
+  msgIsError.value = false
   try {
     const res = await $fetch(`/api/admin/stores/${storeId}/ig/sync`, { method: 'POST' })
     const bits = [`${res.imported} new product${res.imported === 1 ? '' : 's'}`]
@@ -49,6 +55,7 @@ async function sync() {
     await refresh()
   } catch (e) {
     msg.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Import failed'
+    msgIsError.value = true
   } finally {
     syncing.value = false
   }
@@ -59,55 +66,19 @@ async function disconnect() {
   await $fetch(`/api/admin/stores/${storeId}/ig/disconnect`, { method: 'POST' })
   await refresh()
 }
-
-// --- dev-only: seed a mock shop and run the real import pipeline locally ---
-const isDev = import.meta.dev
-const fixtures = [
-  { label: 'Linen clothing boutique', value: 'apparel' },
-  { label: 'Handmade jewelry', value: 'jewelry' },
-  { label: 'Coffee roaster & cafe', value: 'coffee' },
-  { label: 'Ceramics studio', value: 'ceramics' },
-]
-const selectedFixture = ref('apparel')
-const seeding = ref(false)
-
-async function seedFixture() {
-  seeding.value = true
-  msg.value = null
-  try {
-    const res = await $fetch(`/api/admin/stores/${storeId}/ig/seed-fixture`, {
-      method: 'POST',
-      body: { fixture: selectedFixture.value, reset: true },
-    })
-    const r = res.result
-    msg.value =
-      `Seeded “${res.shopName}”: ${r.imported} product${r.imported === 1 ? '' : 's'}` +
-      (r.merged ? `, ${r.merged} merged` : '') +
-      `, ${r.branding} branding, ${r.needsReview} to review ` +
-      `(expected ~${res.expected.products} products / ${res.expected.branding} branding)` +
-      (r.usedAi ? '.' : ' — no AI key, used heuristic.')
-    await refresh()
-  } catch (e) {
-    msg.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Seed failed'
-  } finally {
-    seeding.value = false
-  }
-}
 </script>
 
 <template>
   <UContainer class="max-w-2xl py-2">
-    <SetupFlowBar current="instagram" />
     <UButton
-      v-if="!ret"
       :to="backTo" icon="i-lucide-arrow-left" :label="backLabel"
       variant="link" color="neutral" size="sm" class="-ml-2.5"
     />
     <h1 class="text-2xl font-bold text-highlighted mt-1">Instagram</h1>
 
     <UAlert
-      v-if="msg" class="mt-4" color="info" variant="soft"
-      icon="i-lucide-info" :description="msg"
+      v-if="msg" class="mt-4" :color="msgIsError ? 'warning' : 'info'" variant="soft"
+      :icon="msgIsError ? 'i-lucide-triangle-alert' : 'i-lucide-info'" :description="msg"
     />
 
     <UCard v-if="connected && account" class="mt-6">
@@ -177,30 +148,6 @@ async function seedFixture() {
       />
     </UCard>
 
-    <UCard v-if="isDev" class="mt-6" :ui="{ root: 'border border-dashed border-warning/40' }">
-      <template #header>
-        <div class="flex items-center gap-2">
-          <UIcon name="i-lucide-flask-conical" class="size-4 text-warning" />
-          <span class="font-medium text-highlighted text-sm">Dev: load a test shop</span>
-          <UBadge color="warning" variant="subtle" size="xs" label="local only" class="ml-auto" />
-        </div>
-      </template>
-      <p class="text-sm text-muted">
-        Run the full AI import pipeline against a realistic mock Instagram shop — no live connection needed.
-        Lands draft products with galleries, categories, and branding posts you can inspect.
-      </p>
-      <div class="flex flex-wrap items-center gap-3 mt-4">
-        <USelect v-model="selectedFixture" :items="fixtures" class="min-w-56" />
-        <UButton
-          :loading="seeding" :disabled="seeding"
-          icon="i-lucide-flask-conical" color="neutral"
-          :label="seeding ? 'Seeding…' : 'Load test data'"
-          @click="seedFixture"
-        />
-      </div>
-      <p class="text-xs text-dimmed mt-3">
-        Re-loading resets that shop's fixture products, then re-imports. Open Products / Theme / Branding to inspect.
-      </p>
-    </UCard>
+    <IgFixtureLoader :store-id="storeId" class="mt-6" @seeded="refresh" />
   </UContainer>
 </template>

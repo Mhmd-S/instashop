@@ -14,9 +14,7 @@ const backLabel = computed(() => (ret.value ? 'Back to setup' : 'Dashboard'))
 
 <template>
   <UContainer class="max-w-2xl py-2">
-    <SetupFlowBar current="payments" />
     <UButton
-      v-if="!ret"
       :to="backTo" icon="i-lucide-arrow-left" :label="backLabel"
       variant="link" color="neutral" size="sm" class="-ml-2.5"
     />

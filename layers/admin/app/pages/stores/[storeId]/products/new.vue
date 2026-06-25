@@ -35,7 +35,6 @@ async function submit() {
 
 <template>
   <div class="max-w-lg">
-    <SetupFlowBar current="products" />
     <UButton :to="`/stores/${storeId}/products${retQs}`" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" label="Products" class="px-0" />
     <h1 class="text-2xl font-bold text-highlighted mt-1 mb-6">New product</h1>
 

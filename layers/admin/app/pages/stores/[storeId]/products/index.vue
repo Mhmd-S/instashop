@@ -31,10 +31,9 @@ async function remove(p: AdminProduct) {
 
 <template>
   <div>
-    <SetupFlowBar current="products" />
     <div class="flex items-center justify-between gap-4 mb-8">
       <div>
-        <UButton v-if="!ret" :to="backTo" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" :label="backLabel" class="px-0" />
+        <UButton :to="backTo" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" :label="backLabel" class="px-0" />
         <h1 class="text-2xl font-bold text-highlighted mt-1">Products</h1>
       </div>
       <UButton :to="withReturn(`/stores/${storeId}/products/new`)" icon="i-lucide-plus" label="New product" />

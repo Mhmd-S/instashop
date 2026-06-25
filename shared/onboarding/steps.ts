@@ -1,7 +1,6 @@
-// Single source of truth for the onboarding flow's steps, shared by the wizard
-// (/onboarding) and the SetupFlowBar shown on each deep-linked setup page, so the
-// two can never drift. `preview` is the final celebratory step; the first five are
-// the trackable "essentials".
+// Single source of truth for the onboarding flow's steps, used by the wizard
+// (/onboarding) and the per-store setup pages it links out to. `preview` is the
+// final celebratory step; the first five are the trackable "essentials".
 export type OnboardingStepKey = 'instagram' | 'theme' | 'products' | 'branding' | 'payments' | 'preview'
 
 export interface OnboardingStep {

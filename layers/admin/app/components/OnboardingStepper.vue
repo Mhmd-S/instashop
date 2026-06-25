@@ -2,9 +2,8 @@
 import { ONBOARDING_STEPS, stepDone, onboardingStepUrl } from '~~/shared/onboarding/steps'
 import type { OnboardingStepKey, SetupStatus } from '~~/shared/onboarding/steps'
 
-// The shared onboarding progress stepper, rendered both in the wizard and (via
-// SetupFlowBar) atop each deep-linked setup page so the flow looks identical
-// everywhere. Each step links back to its wizard step.
+// The onboarding progress stepper, rendered in the wizard (/onboarding). Each step
+// links back to its wizard step.
 const props = withDefaults(
   defineProps<{ current?: OnboardingStepKey; storeId: string; status?: SetupStatus | null }>(),
   { current: undefined, status: null },

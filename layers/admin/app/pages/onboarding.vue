@@ -3,6 +3,7 @@ import { useDebounceFn } from '@vueuse/core'
 import { isClaimableSubdomain } from '~~/shared/tenancy/reserved'
 import { ONBOARDING_STEPS, TRACKED_STEPS, stepDone, onboardingStepUrl } from '~~/shared/onboarding/steps'
 import type { OnboardingStepKey, SetupStatus } from '~~/shared/onboarding/steps'
+import { igErrorMessage } from '~~/shared/onboarding/igErrors'
 
 definePageMeta({ surface: 'admin', layout: 'admin', requiresAuth: true })
 
@@ -48,15 +49,6 @@ function back() {
   if (currentIndex.value > 0) goStep(KEYS[currentIndex.value - 1]!)
 }
 
-// Deep-link out to an existing page, passing a return URL so its back button can
-// bring the seller straight back to this step.
-const returnParam = computed(() => encodeURIComponent(onboardingStepUrl(storeId.value ?? '', currentKey.value)))
-function deep(path: string) {
-  return `/stores/${storeId.value}/${path}?return=${returnParam.value}`
-}
-
-const isDev = import.meta.dev
-
 // The Instagram step kicks off OAuth straight from the wizard — no intermediate
 // settings page to click through a second time. The callback returns here (it
 // merges in connected=1), so this step then shows the "connected" state.
@@ -64,6 +56,12 @@ const igConnectUrl = computed(
   () =>
     `/api/ig/connect?storeId=${storeId.value}` +
     `&return=${encodeURIComponent(onboardingStepUrl(storeId.value ?? '', 'instagram'))}`,
+)
+
+// A failed OAuth round-trip returns here (the wizard) with ?ig_error rather than
+// bouncing to the standalone settings page, so the seller stays in the flow.
+const igConnectError = computed(() =>
+  route.query.ig_error ? igErrorMessage(String(route.query.ig_error)) : null,
 )
 
 // Posts import automatically once Instagram is connected — no button needed.
@@ -265,7 +263,7 @@ async function createStore() {
         <p class="text-muted text-sm mt-1">{{ completedCount }} of {{ TRACKED_STEPS.length }} essentials done — you can finish anytime.</p>
       </div>
 
-      <!-- stepper (shared with the deep-linked pages via SetupFlowBar) -->
+      <!-- stepper -->
       <div class="mb-8">
         <OnboardingStepper :current="currentKey" :store-id="storeId ?? ''" :status="status" />
       </div>
@@ -287,16 +285,17 @@ async function createStore() {
           </div>
           <!-- Not connected → start OAuth directly (one click, no second screen). -->
           <template v-if="!status?.steps.instagram.connected">
+            <UAlert
+              v-if="igConnectError"
+              color="warning" variant="soft" icon="i-lucide-triangle-alert"
+              title="Couldn’t connect Instagram" :description="igConnectError"
+            />
             <div class="flex flex-wrap gap-3">
               <UButton :to="igConnectUrl" external color="primary" icon="i-lucide-instagram" label="Connect Instagram" />
               <UButton variant="ghost" color="neutral" label="Skip — I'll add products manually" @click="next" />
             </div>
-            <!-- Dev only: the fixture loader lives on the settings page. -->
-            <UButton
-              v-if="isDev"
-              :to="deep('instagram')" variant="link" color="neutral" size="xs"
-              icon="i-lucide-flask-conical" label="Dev: load test data instead" class="px-0"
-            />
+            <!-- Dev only: seed a mock shop inline (renders nothing outside dev). -->
+            <IgFixtureLoader :store-id="storeId ?? ''" @seeded="refreshStatus" />
           </template>
 
           <!-- Connected → posts import automatically; just continue with “Next”. -->

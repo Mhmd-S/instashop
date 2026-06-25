@@ -17,7 +17,6 @@ function onDeleted() {
 
 <template>
   <div class="max-w-2xl">
-    <SetupFlowBar current="products" />
     <UButton :to="`/stores/${storeId}/products${retQs}`" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" label="Products" class="px-0" />
     <h1 class="text-2xl font-bold text-highlighted mt-1 mb-6">Edit product</h1>
     <ProductEditor :store-id="storeId" :product-id="productId" @deleted="onDeleted" />

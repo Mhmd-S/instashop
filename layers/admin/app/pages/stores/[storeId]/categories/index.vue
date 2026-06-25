@@ -14,8 +14,7 @@ const backLabel = computed(() => (ret.value ? 'Back to setup' : 'Dashboard'))
 
 <template>
   <div class="max-w-3xl">
-    <SetupFlowBar current="products" />
-    <UButton v-if="!ret" :to="backTo" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" :label="backLabel" class="px-0" />
+    <UButton :to="backTo" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" :label="backLabel" class="px-0" />
     <h1 class="text-2xl font-bold text-highlighted mt-1">Categories</h1>
     <p class="text-muted text-sm mt-1 mb-6">Group products into collections shoppers can browse.</p>
 
