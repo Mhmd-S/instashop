@@ -30,8 +30,9 @@ async function submit() {
   <div class="min-h-screen flex items-center justify-center bg-default p-4">
     <UCard class="w-full max-w-sm">
       <template #header>
+        <BrandLogo class="mb-3" />
         <h1 class="text-xl font-semibold text-highlighted">Sign in</h1>
-        <p class="text-sm text-muted mt-1">Insteshop seller dashboard</p>
+        <p class="text-sm text-muted mt-1">Seller dashboard</p>
       </template>
 
       <form class="space-y-4" @submit.prevent="submit">

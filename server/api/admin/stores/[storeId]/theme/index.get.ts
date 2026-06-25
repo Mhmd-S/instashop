@@ -19,19 +19,21 @@ export default defineEventHandler(async (event) => {
   const activeId = s?.active_theme_id
 
   if (!activeId) {
-    return { tokens: FALLBACK_THEME, version: null, isDefault: true, subdomain, logo: null, logoUrl: null }
+    return { tokens: FALLBACK_THEME, version: null, isDefault: true, subdomain, logo: null, logoUrl: null, rationale: null }
   }
 
-  const { data: theme } = await db.from('themes').select('tokens, version, logo').eq('id', activeId).maybeSingle()
+  const { data: theme } = await db.from('themes').select('tokens, version, logo, meta').eq('id', activeId).maybeSingle()
   if (!theme) {
-    return { tokens: FALLBACK_THEME, version: null, isDefault: true, subdomain, logo: null, logoUrl: null }
+    return { tokens: FALLBACK_THEME, version: null, isDefault: true, subdomain, logo: null, logoUrl: null, rationale: null }
   }
 
-  const t = theme as { tokens: unknown; version: number; logo?: ThemeLogo }
+  const t = theme as { tokens: unknown; version: number; logo?: ThemeLogo; meta?: { artDirectionRationale?: string | null } | null }
   const { tokens } = validateAndRepair(t.tokens)
   const logo = t.logo ?? null
   const logoPath = logo?.processedPath || logo?.originalPath || null
   const logoUrl = logoPath ? db.storage.from('store-media').getPublicUrl(logoPath).data.publicUrl : null
+  // The model's one-line justification for the chosen art direction (display-only).
+  const rationale = typeof t.meta?.artDirectionRationale === 'string' ? t.meta.artDirectionRationale : null
 
-  return { tokens, version: t.version, isDefault: false, subdomain, logo, logoUrl }
+  return { tokens, version: t.version, isDefault: false, subdomain, logo, logoUrl, rationale }
 })

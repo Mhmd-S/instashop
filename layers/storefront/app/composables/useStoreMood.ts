@@ -55,7 +55,9 @@ const MOOD_WEIGHTS: Record<string, Partial<Record<StoreVibe, number>>> = {
 // Lower index wins a tie.
 const PRIORITY: StoreVibe[] = ['luxury', 'bold', 'minimal', 'modern']
 
-function pickVibe(mood: DesignTokens['mood'] | null): StoreVibe {
+// Exported so useStoreArtDirection() can derive sensible structural defaults from mood
+// when a theme predates the explicit artDirection block.
+export function pickVibe(mood: DesignTokens['mood'] | null): StoreVibe {
   if (!mood?.length) return 'modern'
   const score: Record<StoreVibe, number> = { luxury: 0, bold: 0, minimal: 0, modern: 0 }
   for (const tag of mood) {
@@ -74,7 +76,7 @@ function pickVibe(mood: DesignTokens['mood'] | null): StoreVibe {
   return bestScore <= 0 ? 'modern' : best
 }
 
-const PRESETS: Record<StoreVibe, StorePresentation> = {
+export const VIBE_PRESETS: Record<StoreVibe, StorePresentation> = {
   // Editorial & hushed: roomy, centred, fine tracking, a hairline rule.
   luxury: {
     vibe: 'luxury',
@@ -135,5 +137,5 @@ const PRESETS: Record<StoreVibe, StorePresentation> = {
 
 export function useStoreMood() {
   const { state } = useTenant()
-  return computed<StorePresentation>(() => PRESETS[pickVibe(state.value.mood)])
+  return computed<StorePresentation>(() => VIBE_PRESETS[pickVibe(state.value.mood)])
 }

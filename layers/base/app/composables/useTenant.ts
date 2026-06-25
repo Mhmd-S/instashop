@@ -9,6 +9,7 @@ export function useTenant() {
     logo: null,
     buttonStyle: null,
     mood: null,
+    artDirection: null,
   }))
   return {
     state,

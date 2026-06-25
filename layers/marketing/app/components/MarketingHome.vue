@@ -1,16 +1,38 @@
 <script setup lang="ts">
+import { BRAND } from '~~/shared/brand'
+
 const { adminUrl } = useSurfaceUrls()
 const handle = ref('')
+
+// Landing SEO + social card. Absolute URLs (built from the configured site URL) so
+// scrapers resolve the OG image correctly.
+const siteUrl = useRuntimeConfig().public.siteUrl
+const ogImage = `${siteUrl}/og.png`
+const title = `${BRAND.name} — ${BRAND.tagline}`
+useSeoMeta({
+  title,
+  description: BRAND.description,
+  ogType: 'website',
+  ogSiteName: BRAND.name,
+  ogUrl: siteUrl,
+  ogTitle: title,
+  ogDescription: BRAND.description,
+  ogImage,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  twitterCard: 'summary_large_image',
+  twitterTitle: title,
+  twitterDescription: BRAND.description,
+  twitterImage: ogImage,
+})
+useHead({ link: [{ rel: 'canonical', href: siteUrl }] })
 </script>
 
 <template>
   <main class="min-h-screen bg-default text-default">
     <header class="border-b border-default bg-default/80 backdrop-blur sticky top-0 z-10">
       <UContainer class="py-4 flex items-center justify-between">
-        <span class="flex items-center gap-2 text-lg font-semibold text-highlighted">
-          <UIcon name="i-lucide-shopping-bag" class="size-6 text-primary" />
-          Insteshop
-        </span>
+        <NuxtLink to="/" aria-label="Home"><BrandLogo /></NuxtLink>
         <nav class="flex items-center gap-2">
           <UButton :to="adminUrl('/login')" external label="Log in" color="neutral" variant="ghost" size="sm" />
           <UButton :to="adminUrl('/signup')" external label="Sign up" color="primary" variant="solid" size="sm" />
@@ -56,7 +78,6 @@ const handle = ref('')
           />
         </form>
 
-        <p class="mt-4 text-xs text-dimmed">surface: marketing (apex)</p>
       </section>
 
       <section class="grid gap-6 sm:grid-cols-3 pb-24">
@@ -77,5 +98,16 @@ const handle = ref('')
         </UCard>
       </section>
     </UContainer>
+
+    <footer class="border-t border-default">
+      <UContainer class="py-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-muted">
+        <span>© {{ BRAND.name }}</span>
+        <nav class="flex flex-wrap gap-x-5 gap-y-2">
+          <NuxtLink to="/privacy" class="hover:text-highlighted">Privacy</NuxtLink>
+          <NuxtLink to="/terms" class="hover:text-highlighted">Terms</NuxtLink>
+          <NuxtLink to="/data-deletion" class="hover:text-highlighted">Data deletion</NuxtLink>
+        </nav>
+      </UContainer>
+    </footer>
   </main>
 </template>

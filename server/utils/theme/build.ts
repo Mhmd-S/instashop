@@ -91,6 +91,66 @@ function mergePalette(raw: unknown, palette: Partial<DesignTokens['palette']> | 
   return { ...base, palette: { ...basePalette, ...palette } }
 }
 
+// Aggregate the per-post mood words the importer already stored
+// (ig_analysis.mood_keywords) into a frequency-ranked hint list for the art-direction
+// model. These were computed at import time and, until now, discarded by theming —
+// generateThemeTokens has always accepted moodHints; nothing ever passed them.
+async function aggregateMoodHints(admin: SupabaseClient, storeId: string, max = 12): Promise<string[]> {
+  const { data } = await admin.from('ig_analysis').select('mood_keywords').eq('store_id', storeId)
+  const counts = new Map<string, number>()
+  for (const row of (data ?? []) as Array<{ mood_keywords?: string[] | null }>) {
+    for (const raw of row.mood_keywords ?? []) {
+      const k = (raw || '').trim().toLowerCase()
+      if (k) counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, max).map(([k]) => k)
+}
+
+// Lifestyle/branding posts read the shop's vibe best; product shots add catalog feel.
+const ROLE_PRIORITY: Record<string, number> = {
+  hero_candidate: 0, lifestyle: 1, branding: 2, announcement: 3, other: 4, logo_candidate: 5,
+}
+
+// A small set of representative post images so the art-direction model reads the shop's
+// actual photographic identity — not just its logo. All are our own Storage objects
+// (downloaded via the admin client; no external fetch, no SSRF surface). Branding shots
+// come first (role-prioritized); product photography tops up when branding is thin.
+// Bounded so token cost/latency of the single Pro call stays sane.
+async function gatherIdentityImages(admin: SupabaseClient, storeId: string, max = 5): Promise<ThemeImage[]> {
+  const paths: string[] = []
+
+  const { data: branding } = await admin
+    .from('branding_assets')
+    .select('storage_path, role')
+    .eq('store_id', storeId)
+    .not('storage_path', 'is', null)
+  const brandingRows = ((branding ?? []) as Array<{ storage_path: string; role: string }>).sort(
+    (a, b) => (ROLE_PRIORITY[a.role] ?? 9) - (ROLE_PRIORITY[b.role] ?? 9),
+  )
+  for (const r of brandingRows) paths.push(r.storage_path)
+
+  if (paths.length < max) {
+    const { data: prod } = await admin
+      .from('product_images')
+      .select('storage_path')
+      .eq('store_id', storeId)
+      .eq('is_video', false)
+      .order('position', { ascending: true })
+      .limit(max)
+    for (const r of (prod ?? []) as Array<{ storage_path: string }>) paths.push(r.storage_path)
+  }
+
+  const out: ThemeImage[] = []
+  for (const path of paths.slice(0, max)) {
+    const buf = await downloadBuffer(admin, path)
+    if (!buf) continue
+    const img = await bufferToThemeImage(buf)
+    if (img) out.push(img)
+  }
+  return out
+}
+
 // Build + persist a new theme version: logo-derived accessible palette + Gemini-
 // chosen fonts/mood/style. The derived palette overrides whatever palette Gemini
 // returns. Everything is validated/clamped by persistTheme (H6).
@@ -112,14 +172,25 @@ export async function buildAndPersistTheme(event: H3Event, storeId: string, manu
     }
   }
 
-  // 2. the logo image ALONE → Gemini for fonts / mood / style. The theme is brand-
-  //    derived only: product photos and other posts never influence the look.
+  // 2. logo + a few representative post images + aggregated post mood words → the
+  //    art-direction model (palette accents, fonts, mood, style, AND structure). The
+  //    shop's own photography & vibe now shape the look — not just the logo. The
+  //    derived palette (step 1) still overrides whatever palette the model returns.
   const images: ThemeImage[] = []
   if (logo) {
     const logoImg = await bufferToThemeImage(logo.buf)
     if (logoImg) images.push(logoImg)
   }
-  const raw = await generateThemeTokens({ storeName, images })
+  const postImages = await gatherIdentityImages(admin, storeId)
+  images.push(...postImages)
+  const moodHints = await aggregateMoodHints(admin, storeId)
+  const raw = await generateThemeTokens({ storeName, images, moodHints })
+
+  // The model's one-sentence justification for the chosen art direction (display-only).
+  const rationale =
+    typeof (raw as { rationale?: unknown } | null)?.rationale === 'string'
+      ? (raw as { rationale: string }).rationale.trim().slice(0, 280) || null
+      : null
 
   // 3. merge derived palette over Gemini output; if neither exists → fallback theme
   const merged = derivedPalette || raw ? mergePalette(raw, derivedPalette) : null
@@ -139,10 +210,11 @@ export async function buildAndPersistTheme(event: H3Event, storeId: string, manu
     storeId,
     merged,
     {
-      model: raw ? cfg.geminiModel || 'gemini-2.5-flash' : null,
+      model: raw ? cfg.geminiThemeModel || cfg.geminiModel || 'gemini-2.5-flash' : null,
       fallbackUsed: merged === null,
       sourceImageCount: images.length,
       source: 'generate',
+      artDirectionRationale: rationale,
     },
     { logo: themeLogo },
   )
@@ -151,6 +223,8 @@ export async function buildAndPersistTheme(event: H3Event, storeId: string, manu
     theme,
     fallbackUsed: merged === null,
     sourceImageCount: images.length,
+    postImageCount: postImages.length,
+    moodHintCount: moodHints.length,
     logoSource: logo?.source ?? null,
     colorFromLogo: !!derivedPalette,
   }

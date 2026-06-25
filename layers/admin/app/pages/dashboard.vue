@@ -5,6 +5,15 @@ const { data, refresh } = await useFetch('/api/admin/stores')
 const { storeUrl } = useSurfaceUrls()
 const stores = computed(() => data.value?.stores ?? [])
 
+// Share flow — opens the shop link / QR / bio guide for an existing store.
+const toShare = ref<{ id: string; name: string; subdomain: string } | null>(null)
+const shareOpen = computed({
+  get: () => !!toShare.value,
+  set: (v: boolean) => {
+    if (!v) toShare.value = null
+  },
+})
+
 // Delete flow — type-to-confirm so an owner can't nuke a store by misclick.
 const toDelete = ref<{ id: string; name: string; subdomain: string } | null>(null)
 const confirmText = ref('')
@@ -115,8 +124,13 @@ async function confirmDelete() {
                 trailing-icon="i-lucide-external-link" label="View storefront"
               />
               <UButton
-                :to="`/onboarding?store=${s.id}`"
                 size="xs" variant="link" color="primary"
+                icon="i-lucide-share-2" label="Share"
+                @click="toShare = { id: s.id, name: s.name, subdomain: s.subdomain }"
+              />
+              <UButton
+                :to="`/onboarding?store=${s.id}`"
+                size="xs" variant="link" color="neutral"
                 icon="i-lucide-wand-2" label="Setup guide"
               />
             </div>
@@ -130,6 +144,12 @@ async function confirmDelete() {
       </UCard>
       </div>
     </template>
+
+    <UModal v-model:open="shareOpen" :title="`Share ${toShare?.name ?? 'your shop'}`">
+      <template #body>
+        <ShareKit v-if="toShare" :subdomain="toShare.subdomain" :store-id="toShare.id" />
+      </template>
+    </UModal>
 
     <UModal v-model:open="deleteOpen" :title="`Delete ${toDelete?.name ?? 'store'}?`" :dismissible="!deleting">
       <template #body>

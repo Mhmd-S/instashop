@@ -1,0 +1,56 @@
+name: Deploy Supabase migrations
+
+# Manual-only: migrations reach prod ONLY when a human clicks "Run workflow"
+# (and, if the `production` environment has required reviewers, after approval).
+# Prod is never touched from a laptop — the access token lives only as a GitHub
+# secret, scoped to this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only — run `db push --dry-run`, apply nothing"
+        type: boolean
+        default: false
+
+# Never run two migration deploys at once; never cancel one mid-flight.
+concurrency:
+  group: supabase-prod-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    name: supabase db push
+    runs-on: ubuntu-latest
+    # The approval gate. Configure Settings → Environments → "production" with
+    # required reviewers to require a click-to-approve before this job runs.
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Show migration status (local vs remote)
+        run: supabase migration list
+
+      - name: Apply migrations
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "::notice::DRY RUN — previewing pending migrations, applying nothing"
+            supabase db push --dry-run
+          else
+            supabase db push
+          fi

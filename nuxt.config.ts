@@ -14,6 +14,23 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/supabase', '@nuxt/ui', '@nuxt/eslint'],
 
+  // Global head defaults. Per-page SEO (title/description/OG) is set with
+  // useSeoMeta (see the marketing landing); this just provides lang, favicons and a
+  // sensible fallback title for surfaces that don't set their own.
+  app: {
+    head: {
+      htmlAttrs: { lang: 'en' },
+      title: 'Vendly',
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', sizes: '32x32', href: '/favicon.ico' },
+      ],
+      meta: [
+        { name: 'theme-color', content: '#4f46e5' },
+      ],
+    },
+  },
+
   css: ['~/assets/css/main.css'],
 
   // Enforce light mode app-wide: disabling Nuxt UI's color-mode integration
@@ -50,7 +67,8 @@ export default defineNuxtConfig({
     // server-only secrets (override via NUXT_* env)
     supabaseSecretKey: '',
     geminiApiKey: '',
-    geminiModel: 'gemini-2.5-flash',
+    geminiModel: 'gemini-2.5-flash', // per-post import classification (cheap, batched)
+    geminiThemeModel: 'gemini-2.5-pro', // once-per-store art-direction call (thinking)
     igAppId: '',
     igAppSecret: '',
     igRedirectUri: '',

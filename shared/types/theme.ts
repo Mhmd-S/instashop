@@ -8,9 +8,39 @@ export const ALLOWED_DENSITY = ['compact', 'cozy', 'comfortable'] as const
 export const ALLOWED_BUTTON = ['solid', 'soft', 'outline', 'pill'] as const
 export const ALLOWED_MOOD = ['minimal', 'luxury', 'playful', 'bold', 'earthy', 'vibrant', 'vintage', 'modern', 'elegant', 'rustic', 'techy', 'warm', 'cool', 'monochrome', 'pastel'] as const
 
+// Art-direction enums (Blueprint: the "Art-Direction Layer"). The vision model picks
+// STRUCTURE from these curated sets exactly like it picks fonts/mood — every value is
+// enum-clamped by validateAndRepair, so richer AI output never reaches the DOM as
+// free-form markup/CSS (the H6 anti-injection invariant holds).
+//
+//   layout       — the page archetype that selects the hero + section composition.
+//   hero         — the hero composition (decoupled from the old hardcoded grid).
+//   productCard  — product-tile treatment (aspect + framing personality).
+//   cardHover    — the tile's hover affordance.
+//   section      — the orderable/omittable storefront sections (sectionOrder is a
+//                  validated, deduped subset; 'hero' is always forced first downstream).
+export const ALLOWED_LAYOUT = ['catalog', 'lookbook', 'editorial', 'boutique'] as const
+export const ALLOWED_HERO = ['split', 'full-bleed', 'centered', 'offset'] as const
+export const ALLOWED_PRODUCT_CARD = ['portrait', 'square', 'editorial', 'tile'] as const
+export const ALLOWED_CARD_HOVER = ['lift', 'zoom', 'none'] as const
+export const ALLOWED_SECTION = ['hero', 'categories', 'featured', 'products'] as const
+
 export type Hex = string // validated against /^#[0-9a-fA-F]{6}$/ server-side (Zod)
 
 export type NeutralScale = Record<'50' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | '950', Hex>
+
+// Structural art direction — what makes two different shops render as genuinely
+// different sites (not just a recolour). Enum-only, so it flows through the same
+// validate/clamp choke-point as the rest of the tokens.
+export interface ArtDirection {
+  layout: typeof ALLOWED_LAYOUT[number]
+  hero: typeof ALLOWED_HERO[number]
+  productCard: typeof ALLOWED_PRODUCT_CARD[number]
+  cardHover: typeof ALLOWED_CARD_HOVER[number]
+  // Which sections render and in what order. Validated to a deduped subset of
+  // ALLOWED_SECTION; the renderer always pins 'hero' first regardless.
+  sectionOrder: Array<typeof ALLOWED_SECTION[number]>
+}
 
 export interface DesignTokens {
   palette: {
@@ -38,6 +68,10 @@ export interface DesignTokens {
   buttonStyle: typeof ALLOWED_BUTTON[number]
   shadow: 'none' | 'subtle' | 'pronounced'
   mood: Array<typeof ALLOWED_MOOD[number]>
+  // Structural archetype + section composition the storefront renders. Optional so
+  // pre-existing themes (persisted before this field existed) still validate; the
+  // renderer falls back to a mood-derived default when absent.
+  artDirection: ArtDirection
   keywords: string[] // admin text display only (H6) — never injected into CSS/HTML
 }
 
@@ -75,5 +109,12 @@ export const FALLBACK_THEME: DesignTokens = {
   buttonStyle: 'solid',
   shadow: 'subtle',
   mood: ['minimal', 'modern'],
+  artDirection: {
+    layout: 'catalog',
+    hero: 'split',
+    productCard: 'square',
+    cardHover: 'lift',
+    sectionOrder: ['hero', 'categories', 'products'],
+  },
   keywords: [],
 }

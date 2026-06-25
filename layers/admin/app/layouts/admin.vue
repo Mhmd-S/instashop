@@ -22,7 +22,7 @@ const menuItems = computed(() => [
   <div class="min-h-screen bg-default text-default">
     <header class="border-b border-default bg-default/75 backdrop-blur sticky top-0 z-50">
       <UContainer class="h-14 flex items-center justify-between">
-        <ULink to="/dashboard" class="font-semibold text-highlighted text-lg">Insteshop</ULink>
+        <ULink to="/dashboard" aria-label="Dashboard"><BrandLogo /></ULink>
         <UDropdownMenu :items="menuItems">
           <UButton
             color="neutral"

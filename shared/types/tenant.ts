@@ -49,4 +49,9 @@ export interface TenantState {
   // emphasis & rhythm, so the storefront needs it in JS (see useStoreMood). Null
   // when the store has no active theme or off the storefront surface.
   mood: DesignTokens['mood'] | null
+  // The active theme's structural art direction (layout archetype + hero/card/section
+  // composition). Like mood, it can't be expressed as a CSS var — it selects which
+  // layout primitives render — so the storefront needs it in JS (see
+  // useStoreArtDirection). Null when no active theme / off the storefront surface.
+  artDirection: DesignTokens['artDirection'] | null
 }

@@ -10,10 +10,9 @@ const isStoreNotFound = computed(
 <template>
   <div class="min-h-screen flex items-center justify-center p-4 bg-default text-default">
     <UCard class="w-full max-w-md text-center">
-      <p class="flex items-center justify-center gap-2 text-sm uppercase tracking-widest text-muted">
-        <UIcon name="i-lucide-shopping-bag" class="size-4 text-primary" />
-        Insteshop
-      </p>
+      <div class="flex justify-center">
+        <BrandLogo />
+      </div>
 
       <UIcon
         :name="isStoreNotFound ? 'i-lucide-store' : 'i-lucide-triangle-alert'"

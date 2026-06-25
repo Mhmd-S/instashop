@@ -8,6 +8,9 @@ export interface PersistThemeMeta {
   fallbackUsed?: boolean
   sourceImageCount?: number
   source?: 'generate' | 'manual-edit'
+  // One short, model-written sentence explaining the chosen art direction. Display-
+  // only (shown to the seller in the theme editor); never injected into CSS/HTML.
+  artDirectionRationale?: string | null
 }
 
 export interface PersistThemeExtras {

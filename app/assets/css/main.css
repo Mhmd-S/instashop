@@ -13,11 +13,18 @@
   --color-accent: var(--t-accent, var(--ui-primary));
 }
 
-/* Density spacing defaults so the storefront's var-driven utilities resolve even
-   when a store has no active theme. Themed stores override these in :root via
-   cssVars.ts (tokensToCssVars). */
+/* Density spacing + typography defaults so the storefront's var-driven utilities
+   resolve even when a store has no active theme. Themed stores override these in
+   :root via cssVars.ts (tokensToCssVars). */
 :root {
   --t-space-section: 3rem;
   --t-space-section-lg: 4rem;
   --t-space-card: 1rem;
+  /* Heading personality (typography.feel) + modular rhythm (typography.scale). */
+  --t-heading-tracking: -0.005em;
+  --t-heading-weight: 600;
+  --t-heading-transform: none;
+  --t-scale: 1.25;
+  --t-leading-display: 1;
+  --t-leading-body: 1.6;
 }

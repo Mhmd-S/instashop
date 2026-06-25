@@ -20,8 +20,35 @@ const gallery = computed(() => {
 })
 const selected = ref(0)
 
+// Social preview for the product link (overrides the store-wide defaults set in
+// app/plugins/seo.server.ts). Product images are absolute Supabase public URLs, so
+// they work directly as og:image; fall back to the store's branded card.
+const reqUrl = useRequestURL()
+const ogImage = computed(
+  () => gallery.value[0]?.public_url || product.image_url || `${reqUrl.origin}/api/storefront/og-image`,
+)
+const seoDescription = computed(() => {
+  const d = (product.description ?? '').replace(/\s+/g, ' ').trim()
+  return d ? d.slice(0, 160) : `${product.title} — available now. Tap to order.`
+})
+useSeoMeta({
+  title: () => product.title,
+  description: () => seoDescription.value,
+  ogTitle: () => product.title,
+  ogDescription: () => seoDescription.value,
+  ogType: 'website',
+  ogUrl: reqUrl.href,
+  ogImage: () => ogImage.value,
+  twitterCard: 'summary_large_image',
+  twitterTitle: () => product.title,
+  twitterImage: () => ogImage.value,
+})
+
 const cart = useCart()
 const cta = useStoreCta()
+// Keep the PDP on-brand with the home grid: the gallery frame uses the same product-
+// card aspect, and the title carries the store's heading personality (feel tracking).
+const ad = useStoreArtDirection()
 const qty = ref(1)
 const added = ref(false)
 function addToCart() {
@@ -55,7 +82,7 @@ const priceLabel = computed(() => formatPrice(product.price_minor, product.curre
       <div class="mt-6 grid gap-8 md:grid-cols-2 lg:gap-14">
         <!-- Gallery -->
         <div class="md:sticky md:top-24 md:self-start">
-          <div class="aspect-square overflow-hidden rounded-[var(--ui-radius)] border border-default bg-muted shadow-[var(--t-shadow)]">
+          <div class="overflow-hidden rounded-[var(--ui-radius)] border border-default bg-muted shadow-[var(--t-shadow)]" :class="ad.card.aspect">
             <img
               v-if="gallery[selected]?.public_url"
               :src="gallery[selected]!.public_url!"
@@ -85,7 +112,7 @@ const priceLabel = computed(() => formatPrice(product.price_minor, product.curre
 
         <!-- Details -->
         <div class="flex flex-col">
-          <h1 class="font-heading text-3xl font-semibold tracking-tight text-balance text-highlighted sm:text-4xl">{{ product.title }}</h1>
+          <h1 class="font-heading text-3xl font-semibold tracking-[var(--t-heading-tracking)] text-balance text-highlighted sm:text-4xl">{{ product.title }}</h1>
           <p class="mt-3 text-3xl font-semibold text-primary">{{ priceLabel }}</p>
 
           <p v-if="product.description" class="mt-5 whitespace-pre-line leading-relaxed text-muted">{{ product.description }}</p>

@@ -13,6 +13,7 @@ export default defineNuxtPlugin(() => {
     logo: null,
     buttonStyle: null,
     mood: null,
+    artDirection: null,
   }))
   const tokens = ctx?.themeTokens as DesignTokens | null | undefined
   state.value = {
@@ -22,5 +23,6 @@ export default defineNuxtPlugin(() => {
     logo: (ctx?.themeLogo as StoreLogo | null) ?? null,
     buttonStyle: tokens?.buttonStyle ?? null,
     mood: tokens?.mood ?? null,
+    artDirection: tokens?.artDirection ?? null,
   }
 })

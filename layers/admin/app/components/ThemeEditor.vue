@@ -3,9 +3,13 @@ import type { DesignTokens } from '~~/shared/types/theme'
 import {
   ALLOWED_BODY_FONTS,
   ALLOWED_BUTTON,
+  ALLOWED_CARD_HOVER,
   ALLOWED_DENSITY,
   ALLOWED_HEADING_FONTS,
+  ALLOWED_HERO,
+  ALLOWED_LAYOUT,
   ALLOWED_MOOD,
+  ALLOWED_PRODUCT_CARD,
   ALLOWED_RADIUS,
   FALLBACK_THEME,
 } from '~~/shared/types/theme'
@@ -76,6 +80,13 @@ const density = ref<string>('comfortable')
 const buttonStyle = ref<string>('solid')
 const shadow = ref<string>('subtle')
 const mood = ref<string[]>([])
+// Structural art direction (the part the model picks from the shop's post identity).
+const layout = ref<string>('catalog')
+const heroStyle = ref<string>('split')
+const productCard = ref<string>('square')
+const cardHover = ref<string>('lift')
+// Section composition isn't edited inline (v1); preserved verbatim on save.
+let sectionOrder: DesignTokens['artDirection']['sectionOrder'] = ['hero', 'categories', 'products']
 
 function loadFrom(t: DesignTokens) {
   for (const k of COLOR_KEYS) colors[k] = t.palette[k]
@@ -86,6 +97,12 @@ function loadFrom(t: DesignTokens) {
   buttonStyle.value = t.buttonStyle
   shadow.value = t.shadow
   mood.value = [...t.mood]
+  const ad = t.artDirection ?? FALLBACK_THEME.artDirection
+  layout.value = ad.layout
+  heroStyle.value = ad.hero
+  productCard.value = ad.productCard
+  cardHover.value = ad.cardHover
+  sectionOrder = [...ad.sectionOrder]
 }
 watch(
   () => data.value?.tokens,
@@ -129,6 +146,12 @@ const shadowVal = computed(() => SHADOW_MAP[shadow.value as DesignTokens['shadow
 const pad = computed(() => DENSITY_MAP[density.value as DesignTokens['density']].card)
 const imageTint = computed(() => `color-mix(in oklab, ${colors.muted} 22%, ${colors.bg})`)
 
+// The art-direction model's one-line justification (display-only), and the preview
+// product-card aspect mirroring the chosen productCard variant.
+const rationale = computed(() => data.value?.rationale ?? null)
+const PREVIEW_ASPECT: Record<string, string> = { portrait: 'aspect-4/5', square: 'aspect-square', editorial: 'aspect-3/4', tile: 'aspect-square' }
+const previewAspect = computed(() => PREVIEW_ASPECT[productCard.value] ?? 'aspect-4/3')
+
 // Primary CTA styling, mirroring buttonStyle (solid / soft / outline / pill). The
 // transparent 1px border keeps the height identical across styles (no jump on switch).
 const ctaStyle = computed(() => {
@@ -162,8 +185,9 @@ async function generate() {
   err.value = null
   try {
     const res = await $fetch(`/api/admin/stores/${props.storeId}/theme/generate`, { method: 'POST' })
+    const fromPosts = res.postImageCount ? ` and ${res.postImageCount} of your posts` : ''
     msg.value = res.colorFromLogo
-      ? `Theme derived from your ${res.logoSource === 'manual' ? 'logo' : 'Instagram profile picture'} — palette, fonts & mood.`
+      ? `Theme derived from your ${res.logoSource === 'manual' ? 'logo' : 'Instagram profile picture'}${fromPosts} — palette, fonts, mood & layout.`
       : res.fallbackUsed
         ? 'No logo or Gemini key found — applied a safe default theme. Connect Instagram or upload a logo for a branded palette.'
         : 'Generated a theme from your shop name.'
@@ -192,6 +216,13 @@ async function save(): Promise<boolean> {
         buttonStyle: buttonStyle.value,
         shadow: shadow.value,
         mood: mood.value,
+        artDirection: {
+          layout: layout.value,
+          hero: heroStyle.value,
+          productCard: productCard.value,
+          cardHover: cardHover.value,
+          sectionOrder,
+        },
       },
     })
     if (!props.embedded) msg.value = 'Theme saved.'
@@ -237,12 +268,14 @@ defineExpose({ save })
     <template v-else>
     <div class="flex items-center justify-between gap-4">
       <p class="text-xs text-muted">
-        Version {{ version ?? '—' }} · derived from your logo — edit anything below.
+        Version {{ version ?? '—' }} · derived from your logo &amp; posts — edit anything below.
       </p>
     </div>
 
     <UAlert v-if="msg" class="mt-4" color="success" variant="soft" icon="i-lucide-check" :description="msg" />
     <UAlert v-if="err" class="mt-4" color="error" variant="soft" icon="i-lucide-circle-alert" :description="err" />
+    <!-- Why the AI chose this art direction (display-only; from the theme model). -->
+    <UAlert v-if="rationale" class="mt-4" color="neutral" variant="soft" icon="i-lucide-sparkles" title="Why this design" :description="rationale" />
 
     <!-- Logo + generate -->
     <UCard class="mt-4">
@@ -295,6 +328,27 @@ defineExpose({ save })
       </UCard>
     </div>
 
+    <!-- Layout & structure: the art direction the AI picks from your post identity.
+         These select WHICH layout primitives the live store renders (hero composition,
+         product-card treatment, section rhythm). -->
+    <UCard class="mt-4">
+      <template #header>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="font-semibold text-highlighted">Layout &amp; structure</h3>
+          <span class="text-xs text-dimmed">Chosen from your posts — override any of it</span>
+        </div>
+      </template>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <UFormField label="Layout"><USelect v-model="layout" :items="opts(ALLOWED_LAYOUT)" class="w-full" /></UFormField>
+        <UFormField label="Hero"><USelect v-model="heroStyle" :items="opts(ALLOWED_HERO)" class="w-full" /></UFormField>
+        <UFormField label="Product cards"><USelect v-model="productCard" :items="opts(ALLOWED_PRODUCT_CARD)" class="w-full" /></UFormField>
+        <UFormField label="Card hover"><USelect v-model="cardHover" :items="opts(ALLOWED_CARD_HOVER)" class="w-full" /></UFormField>
+      </div>
+      <p class="mt-3 text-xs text-dimmed">
+        Hero composition &amp; section rhythm preview live on your storefront. The card below reflects your product-card choice.
+      </p>
+    </UCard>
+
     <!-- Preview: a faithful slice of the storefront — the same fonts, colors, corners,
          shadow, button style & density the live store renders. -->
     <UCard class="mt-4">
@@ -339,7 +393,7 @@ defineExpose({ save })
             :style="{ background: colors.card, borderColor: colors.border, borderRadius: radiusVal, boxShadow: shadowVal, padding: pad }"
           >
             <div class="relative">
-              <div class="aspect-4/3 w-full overflow-hidden" :style="{ background: imageTint, borderRadius: radiusVal }">
+              <div class="w-full overflow-hidden" :class="previewAspect" :style="{ background: imageTint, borderRadius: radiusVal }">
                 <img v-if="previewImage" :src="previewImage" :alt="previewTitle" class="size-full object-cover">
                 <div v-else class="grid size-full place-items-center">
                   <UIcon name="i-lucide-image" class="size-6" :style="{ color: colors.muted }" />

@@ -400,6 +400,11 @@ async function createStore() {
             <iframe :src="previewUrl" class="w-full h-[460px] bg-white" title="Storefront preview" loading="lazy" />
           </div>
 
+          <div v-if="store" class="rounded-xl border border-default p-4">
+            <p class="mb-3 text-sm font-semibold text-highlighted">Share your shop</p>
+            <ShareKit :subdomain="store.subdomain" :store-id="store.id" />
+          </div>
+
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
             <div v-for="s in ONBOARDING_STEPS.slice(0, 5)" :key="s.key" class="flex items-center gap-2 rounded-lg border border-default px-3 py-2 text-sm">
               <UIcon :name="doneOf(s.key) ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'" :class="doneOf(s.key) ? 'text-success' : 'text-dimmed'" class="size-4 shrink-0" />

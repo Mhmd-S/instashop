@@ -1,11 +1,16 @@
-import type { DesignTokens, NeutralScale } from '~~/shared/types/theme'
+import type { ArtDirection, DesignTokens, NeutralScale } from '~~/shared/types/theme'
 import {
   ALLOWED_BODY_FONTS,
   ALLOWED_BUTTON,
+  ALLOWED_CARD_HOVER,
   ALLOWED_DENSITY,
   ALLOWED_HEADING_FONTS,
+  ALLOWED_HERO,
+  ALLOWED_LAYOUT,
   ALLOWED_MOOD,
+  ALLOWED_PRODUCT_CARD,
   ALLOWED_RADIUS,
+  ALLOWED_SECTION,
   FALLBACK_THEME,
 } from '~~/shared/types/theme'
 import { bestOn, fixOn } from './contrast'
@@ -23,6 +28,38 @@ function pick<T extends readonly string[]>(v: unknown, allowed: T, fallback: T[n
 }
 
 const NEUTRAL_KEYS = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'] as const
+
+// Clamp the art-direction block to enums-only, exactly like fonts/mood. sectionOrder
+// is filtered to the allowlist + deduped; 'hero' is guaranteed present and first so a
+// model that omits it can never produce a heroless page.
+function repairArtDirection(raw: unknown): ArtDirection {
+  const a = asObj(raw)
+  const fb = FALLBACK_THEME.artDirection
+  const seen = new Set<ArtDirection['sectionOrder'][number]>()
+  const order: ArtDirection['sectionOrder'] = ['hero']
+  seen.add('hero')
+  if (Array.isArray(a.sectionOrder)) {
+    for (const s of a.sectionOrder) {
+      if (typeof s === 'string' && (ALLOWED_SECTION as readonly string[]).includes(s) && !seen.has(s as ArtDirection['sectionOrder'][number])) {
+        seen.add(s as ArtDirection['sectionOrder'][number])
+        order.push(s as ArtDirection['sectionOrder'][number])
+      }
+    }
+  }
+  // Only 'hero' was forced → no real composition given; fall back to the default set.
+  let sectionOrder = order.length > 1 ? order : [...fb.sectionOrder]
+  // A storefront must always show its products — force the grid in if the model
+  // (or an edit) dropped it, so a shop can never render with no buyable surface.
+  if (!sectionOrder.includes('products')) sectionOrder = [...sectionOrder, 'products']
+
+  return {
+    layout: pick(a.layout, ALLOWED_LAYOUT, fb.layout),
+    hero: pick(a.hero, ALLOWED_HERO, fb.hero),
+    productCard: pick(a.productCard, ALLOWED_PRODUCT_CARD, fb.productCard),
+    cardHover: pick(a.cardHover, ALLOWED_CARD_HOVER, fb.cardHover),
+    sectionOrder,
+  }
+}
 
 // Single choke-point: turns ANY model/DB JSON into a valid, AA-contrast DesignTokens.
 // Never throws — bad fields fall back to the default theme's value (H6).
@@ -78,6 +115,7 @@ export function validateAndRepair(raw: unknown): { tokens: DesignTokens; adjuste
     mood: moodArr
       .filter((m): m is DesignTokens['mood'][number] => (ALLOWED_MOOD as readonly string[]).includes(m as string))
       .slice(0, 4),
+    artDirection: repairArtDirection(r.artDirection),
     keywords: keywordsArr
       .filter((k): k is string => typeof k === 'string')
       .map((k) => k.slice(0, 40))

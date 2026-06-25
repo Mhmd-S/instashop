@@ -4,7 +4,7 @@ import { formatPrice } from '~~/shared/types/product'
 
 defineProps<{ products: StorefrontProduct[]; emptyText?: string }>()
 
-const pres = useStoreMood()
+const ad = useStoreArtDirection()
 const cart = useCart()
 
 // Quick-add straight from the grid — the single biggest shopping-UX win. The card
@@ -40,12 +40,13 @@ onBeforeUnmount(() => { if (flashTimer) clearTimeout(flashTimer) })
         class="block rounded-[var(--ui-radius)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <div
-          class="relative overflow-hidden bg-muted"
+          class="relative overflow-hidden rounded-[var(--ui-radius)] bg-muted"
           :class="[
-            pres.card.aspect,
-            pres.card.framed
-              ? 'rounded-[var(--ui-radius)] border border-default transition duration-200 group-hover:border-primary/50 group-hover:shadow-[var(--t-shadow)] motion-safe:group-hover:-translate-y-1'
-              : 'rounded-[var(--ui-radius)]',
+            ad.card.aspect,
+            ad.card.framed ? 'border border-default' : '',
+            ad.card.framed && ad.card.hover === 'lift'
+              ? 'transition duration-200 group-hover:border-primary/50 group-hover:shadow-[var(--t-shadow)] motion-safe:group-hover:-translate-y-1'
+              : '',
           ]"
         >
           <img
@@ -53,18 +54,19 @@ onBeforeUnmount(() => { if (flashTimer) clearTimeout(flashTimer) })
             :src="p.image_url"
             :alt="p.title"
             loading="lazy"
-            class="size-full object-cover transition duration-500 motion-safe:group-hover:scale-[1.04]"
+            class="size-full object-cover"
+            :class="ad.card.hover === 'zoom' ? 'transition duration-500 motion-safe:group-hover:scale-[1.04]' : ''"
           >
           <div v-else class="grid size-full place-items-center text-dimmed">
             <UIcon name="i-lucide-image-off" class="size-7" />
           </div>
         </div>
 
-        <div class="mt-3" :class="pres.card.align === 'center' ? 'text-center' : ''">
-          <h3 class="line-clamp-2 min-h-[2.5rem] font-heading font-medium leading-snug text-highlighted">
+        <div class="mt-3" :class="ad.card.align === 'center' ? 'text-center' : ''">
+          <h3 class="line-clamp-2 min-h-[2.5rem] font-heading font-medium leading-snug tracking-[var(--t-heading-tracking)] text-highlighted">
             {{ p.title }}
           </h3>
-          <p class="mt-1 text-sm sm:text-base" :class="pres.card.price">
+          <p class="mt-1 text-sm sm:text-base" :class="ad.card.price">
             {{ formatPrice(p.price_minor, p.currency) }}
           </p>
         </div>
@@ -75,12 +77,12 @@ onBeforeUnmount(() => { if (flashTimer) clearTimeout(flashTimer) })
       <UButton
         :icon="justAdded === p.id ? 'i-lucide-check' : 'i-lucide-plus'"
         :color="justAdded === p.id ? 'success' : 'primary'"
-        :variant="pres.expressive ? 'solid' : 'soft'"
+        :variant="ad.expressive ? 'solid' : 'soft'"
         size="sm"
         :aria-label="`Add ${p.title} to cart`"
         :class="[
           'absolute right-2 top-2 z-10 shadow-[var(--t-shadow)] backdrop-blur transition',
-          pres.expressive ? 'rounded-full' : '',
+          ad.expressive ? 'rounded-full' : '',
           'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
         ]"
         @click="quickAdd(p)"

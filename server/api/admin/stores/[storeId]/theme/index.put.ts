@@ -5,10 +5,15 @@ import { persistTheme } from '~~/server/utils/theme/persist'
 import {
   ALLOWED_BODY_FONTS,
   ALLOWED_BUTTON,
+  ALLOWED_CARD_HOVER,
   ALLOWED_DENSITY,
   ALLOWED_HEADING_FONTS,
+  ALLOWED_HERO,
+  ALLOWED_LAYOUT,
   ALLOWED_MOOD,
+  ALLOWED_PRODUCT_CARD,
   ALLOWED_RADIUS,
+  ALLOWED_SECTION,
   FALLBACK_THEME,
 } from '~~/shared/types/theme'
 import type { DesignTokens, ThemeLogo } from '~~/shared/types/theme'
@@ -36,6 +41,15 @@ const Body = z.object({
   buttonStyle: enumOf(ALLOWED_BUTTON),
   shadow: enumOf(['none', 'subtle', 'pronounced'] as const),
   mood: z.array(enumOf(ALLOWED_MOOD)).max(4).optional(),
+  artDirection: z
+    .object({
+      layout: enumOf(ALLOWED_LAYOUT),
+      hero: enumOf(ALLOWED_HERO),
+      productCard: enumOf(ALLOWED_PRODUCT_CARD),
+      cardHover: enumOf(ALLOWED_CARD_HOVER),
+      sectionOrder: z.array(enumOf(ALLOWED_SECTION)).optional(),
+    })
+    .optional(),
 })
 
 // Manual theme edit: merge the seller's edits over the current tokens (preserving
@@ -64,6 +78,7 @@ export default defineEventHandler(async (event) => {
     logo = t?.logo ?? null
   }
 
+  const curAD = current.artDirection ?? FALLBACK_THEME.artDirection
   const merged = {
     ...current,
     palette: { ...current.palette, ...b.palette },
@@ -73,6 +88,12 @@ export default defineEventHandler(async (event) => {
     buttonStyle: b.buttonStyle,
     shadow: b.shadow,
     mood: b.mood ?? current.mood,
+    // Re-validated/clamped by persistTheme (repairArtDirection). When the editor omits
+    // it, keep the current art direction. `current` may be an older DB theme that
+    // predates this field, so fall back to the default before merging.
+    artDirection: b.artDirection
+      ? { ...b.artDirection, sectionOrder: b.artDirection.sectionOrder ?? curAD.sectionOrder }
+      : curAD,
   }
 
   const theme = await persistTheme(event, storeId, merged, { source: 'manual-edit' }, { logo })
