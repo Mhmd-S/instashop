@@ -1,0 +1,371 @@
+---
+title: "Platform commission → superadmin; strip platform/settings concerns out of seller onboarding"
+status: ready-for-implementation
+audience: implementing-agent (no prior conversation context)
+area: Stripe Connect / payments / onboarding
+---
+
+# Platform commission → superadmin, and clean up the payments onboarding step
+
+## 0. Orientation (read first — you have no prior context)
+
+**What the app is.** Insteshop is a multi-tenant SaaS. The platform operator (the "SaaS owner")
+helps sellers turn their Instagram into a hosted storefront. Sellers ("store admins") sign up,
+connect Instagram, and sell products. Payments run through **Stripe Connect**: each store has its
+own connected **Express** account, and checkout uses **destination charges** where
+`application_fee_amount` is **the platform's commission** (the SaaS owner's cut). The Stripe secret
+key belongs to the platform account; we only ever store each store's `acct_…` id.
+
+**Surfaces / hosts** (set by `server/middleware/00.tenant.ts`, see `docs/ARCHITECTURE.md`):
+
+| Surface | Host (prod / local) | Notes |
+|---|---|---|
+| Marketing | `insteshop.app` / `lvh.me:3000` | landing |
+| **Admin** | `app.insteshop.app` / `app.lvh.me:3000` | seller dashboard; **auth lives only on this host** |
+| Storefront | `<store>.insteshop.app` / `<store>.lvh.me:3000` | public shop |
+
+Code is split into Nuxt **layers** (`nuxt.config.ts` → `extends`): `layers/base`, `layers/marketing`,
+`layers/admin`, `layers/storefront`. Admin pages/components/layout live under `layers/admin/app/**`.
+
+**Auth & roles.**
+- `server/utils/auth.ts` exposes `requireUser(event)` and `requireStoreAccess(event, storeId, minRole)`.
+- A user's global role is the JWT claim `app_metadata.global_role`. `'superadmin'` is durable in
+  `profiles.global_role` and injected into the JWT by a Custom Access Token Hook.
+- `requireStoreAccess` already treats `superadmin` as `owner` on any store.
+- Client-side, `useSupabaseUser()` exposes `user.value.app_metadata.global_role`.
+- Route protection: `app/middleware/surface-guard.global.ts` enforces `to.meta.surface` (host match)
+  and `to.meta.requiresAuth` (session present). It does **not** know about roles.
+
+**Supabase gotchas (important).**
+- `@supabase/supabase-js` query builders **do not throw** on DB errors — they resolve to
+  `{ data, error }`. Always destructure and check `error`.
+- Server reads/writes that bypass RLS use `supabaseAdmin(event)` (service role). User-scoped reads
+  use `serverSupabaseClient(event)`.
+- Types are generated into `shared/types/database.types.ts`.
+
+**Dev workflow.**
+- Typecheck: `pnpm typecheck` (`vue-tsc --noEmit`). **This is the gate** — keep it at 0 errors.
+- ESLint is currently broken in this environment (`Object.groupBy is not a function`, Node-version
+  issue) — do not rely on it; use typecheck.
+- Local DB: `pnpm db:start` (Supabase), migrations in `supabase/migrations/NNNN_*.sql`. Apply new
+  migrations without wiping data via `supabase migration up`; regenerate types via `pnpm db:types`.
+  `pnpm db:reset` re-runs all migrations and **wipes data** (avoid unless necessary).
+
+---
+
+## 1. Goal & product decisions (already decided — do not re-litigate)
+
+Two seller-facing controls are really **platform/settings** concerns and must be removed from the
+seller onboarding experience:
+
+1. **Platform commission.** Today a seller can edit their own commission (their cut of every sale)
+   in the Payments UI. That is wrong — the commission is the SaaS owner's revenue. **Decision:** a
+   **single global commission rate**, stored in a new `platform_settings` table, edited only by the
+   SaaS owner on a new **superadmin-only in-app page**. There is **no per-store override** and **no
+   seller-facing control**. (The runtime/env `platformFeeBps` default is retired; `platform_settings`
+   is the single source of truth.)
+
+2. **"Accept card payments" toggle.** Today the onboarding wizard's Payments step shows a switch to
+   show/hide Stripe at checkout. That is a settings-level decision, not an onboarding decision.
+   **Decision:** remove that toggle from the **onboarding wizard** only; keep it on the standalone
+   **Payments settings page**. Because connecting Stripe is the actual intent, **default cards to ON**
+   the moment the connected account becomes `charges_enabled` (so onboarding "just works"); the
+   settings toggle can turn it off later.
+
+Non-negotiables:
+- A non-superadmin store admin must have **no way** to see or change the commission (UI or API).
+- Buyers never see the commission (it's a Stripe `application_fee_amount`, deducted from the seller's
+  payout) — no storefront changes.
+- Refund behavior is unchanged: `refund_application_fee: true` reverses whatever fee was charged.
+
+---
+
+## 2. Current state (what exists today)
+
+### Commission
+- **DB column** `stripe_accounts.platform_fee_bps int null` — per-store override, defined in
+  `supabase/migrations/0013_stripe_connect.sql` (CHECK 0..10000).
+- **Env/runtime default** `nuxt.config.ts` → `runtimeConfig.platformFeeBps: '0'` (env
+  `NUXT_PLATFORM_FEE_BPS`, "150 = 1.5%").
+- **`server/utils/stripe/client.ts`**
+  - `effectiveFeeBps(event, perStoreBps)` → `perStoreBps ?? runtimeConfig.platformFeeBps`.
+  - `applicationFeeAmount(totalMinor, bps)` → `Math.floor(totalMinor * bps / 10000)`. **Keep this.**
+- **`server/utils/stripe/account.ts`** — `StoreStripeAccount` interface includes `platform_fee_bps`;
+  `getStripeAccountForStore()` selects it.
+- **`server/api/storefront/checkout/payment-intent.post.ts:70`**
+  `const fee = applicationFeeAmount(amount, effectiveFeeBps(event, acct.platform_fee_bps))`
+  then `...(fee > 0 ? { application_fee_amount: fee } : {})` on the destination-charge PaymentIntent.
+- **`server/api/admin/stores/[storeId]/stripe/index.get.ts`** — selects & returns `platform_fee_bps`.
+- **`server/api/admin/stores/[storeId]/payment-methods.patch.ts`** — Body accepts
+  `platformFeeBps: number|null|optional` and writes `stripe_accounts.platform_fee_bps`. Same endpoint
+  also handles `enableStripe` (see below). Guarded by `requireStoreAccess(event, storeId, 'admin')`.
+- **`layers/admin/app/components/PaymentsSetup.vue`** — the seller Payments component (shared by the
+  onboarding wizard and the standalone Payments page). Contains:
+  - `feeBps` ref + `watch(account, …)` + `saveFee()` → PATCH `payment-methods` `{ platformFeeBps }`.
+  - Template "**Platform commission**" block (`UInput` + Save), roughly lines ~197–208.
+- **`shared/types/database.types.ts`** — generated; `stripe_accounts` Row/Insert/Update each include
+  `platform_fee_bps`.
+- Refund (unchanged): `server/api/admin/stores/[storeId]/orders/[orderId]/refund.post.ts` passes
+  `refund_application_fee: true`. The orders page copy at
+  `layers/admin/app/pages/stores/[storeId]/orders/[orderId].vue:212` mentions reversing commission —
+  leave as-is.
+
+### "Accept card payments" toggle
+- **`PaymentsSetup.vue`** — `toggleStripe(enable)` → PATCH `payment-methods` `{ enableStripe }`; the
+  `USwitch` block is roughly lines ~188–195 (only rendered once `chargesEnabled`).
+- **`payment-methods.patch.ts`** — `enableStripe` adds/removes `'stripe'` from `stores.payment_methods`
+  (requires `charges_enabled` to enable), then `bustStoreCache(subdomain)` (`~~/server/utils/tenant`).
+- **`server/api/admin/stores/[storeId]/stripe/sync.post.ts`** — called on the Stripe onboarding
+  **return** (`?stripe=return`); retrieves the account and calls `syncStripeAccountStatus()` to mirror
+  capability flags. Returns `{ chargesEnabled, detailsSubmitted, payoutsEnabled }`.
+- **`server/api/admin/stores/[storeId]/setup-status.get.ts`** — wizard status; `payments.done =
+  chargesEnabled`, `payments.connected = !!stripe row`, `payments.enabled = payment_methods.includes('stripe')`.
+- Component usage:
+  - Wizard: `layers/admin/app/pages/onboarding.vue` Payments step renders
+    `<PaymentsSetup :store-id="storeId ?? ''" :return-path="onboardingStepUrl(storeId ?? '', 'payments')" @changed="refreshStatus" />`.
+  - Settings page: `layers/admin/app/pages/stores/[storeId]/payments.vue` renders
+    `<PaymentsSetup :store-id="storeId" :return-path="ret ?? undefined" class="mt-6" />`.
+- There is **no superadmin page** anywhere yet; `superadmin` is only an auth role. Admin layout is
+  `layers/admin/app/layouts/admin.vue` (sticky header with brand + account dropdown).
+
+---
+
+## 3. Target state
+
+- New `platform_settings` singleton table holds `fee_bps` (global commission). No per-store column.
+- New superadmin API (`GET`/`PATCH`) + a superadmin-only page at **`/platform`** to view/edit the rate.
+- Admin layout shows a "Platform" nav entry **only** to superadmins.
+- Checkout reads the global rate from `platform_settings` (async DB read) and applies it as
+  `application_fee_amount`.
+- Seller Payments component: **no** commission control anywhere; the **"Accept cards" toggle is hidden
+  in the wizard** (new `embedded` prop) and shown on the settings page.
+- Connecting Stripe auto-enables `'stripe'` in `payment_methods` once `charges_enabled` (on the
+  return-sync), so cards are live by default; settings toggle can turn it off.
+
+---
+
+## 4. Implementation steps
+
+### Part A — Commission becomes a global, superadmin-managed setting
+
+#### A1. Migration — create `platform_settings`, drop the per-store column
+Create `supabase/migrations/0018_platform_commission.sql` (use the next free number; 0017 is current):
+
+```sql
+-- 0018 — Platform commission becomes a single global, superadmin-managed value.
+-- Singleton settings table (one row, id=1). Service-role only: the superadmin API
+-- uses supabaseAdmin; sellers must never read or write it. Drops the per-store
+-- override that was (incorrectly) seller-editable.
+create table public.platform_settings (
+  id          smallint primary key default 1 check (id = 1),
+  fee_bps     int not null default 0 check (fee_bps >= 0 and fee_bps <= 10000),
+  updated_at  timestamptz not null default now(),
+  updated_by  uuid references public.profiles(id) on delete set null
+);
+
+insert into public.platform_settings (id, fee_bps) values (1, 0)
+  on conflict (id) do nothing;
+
+alter table public.platform_settings enable row level security;
+-- No policies: only service-role (supabaseAdmin) touches this table.
+
+alter table public.stripe_accounts drop column if exists platform_fee_bps;
+```
+
+Notes:
+- Seed `fee_bps = 0` to preserve current behavior (env default was `'0'`). The SaaS owner sets the
+  real rate via the new page.
+- Apply locally with `supabase migration up` (keeps data), then regenerate types (A2).
+
+#### A2. Regenerate generated types
+Run `pnpm db:types` (reads the live local DB). Verify in `shared/types/database.types.ts`:
+- a new `platform_settings` table type (Row/Insert/Update) is present, and
+- `platform_fee_bps` is **gone** from `stripe_accounts` Row/Insert/Update.
+If the CLI is unavailable, hand-edit those entries to match.
+
+#### A3. Superadmin auth helper
+In `server/utils/auth.ts` add:
+
+```ts
+// Require the caller to be a platform superadmin (the SaaS owner), else 403.
+export async function requireSuperadmin(event: H3Event) {
+  const user = await requireUser(event)
+  const role = (user.app_metadata as { global_role?: string } | undefined)?.global_role
+  if (role !== 'superadmin') throw createError({ statusCode: 403, statusMessage: 'Superadmin only' })
+  return user
+}
+```
+
+#### A4. Global-fee read helper
+Create `server/utils/platformSettings.ts`:
+
+```ts
+import type { H3Event } from 'h3'
+import { supabaseAdmin } from '~~/server/utils/supabaseAdmin'
+
+// The platform commission in basis points (global). Defaults to 0 if the row is
+// somehow missing. Single source of truth for the Connect application fee.
+export async function getPlatformFeeBps(event: H3Event): Promise<number> {
+  const { data } = await supabaseAdmin(event)
+    .from('platform_settings').select('fee_bps').eq('id', 1).maybeSingle()
+  const bps = (data as { fee_bps?: number } | null)?.fee_bps ?? 0
+  return Number.isFinite(bps) && bps >= 0 ? Math.min(bps, 10000) : 0
+}
+```
+
+#### A5. Rewire fee reads
+- `server/utils/stripe/client.ts`: **delete** `effectiveFeeBps` (and its `runtimeConfig.platformFeeBps`
+  read). Keep `applicationFeeAmount`.
+- `server/api/storefront/checkout/payment-intent.post.ts`: replace line ~70 with
+  ```ts
+  import { stripe, applicationFeeAmount } from '~~/server/utils/stripe/client'
+  import { getPlatformFeeBps } from '~~/server/utils/platformSettings'
+  // …
+  const fee = applicationFeeAmount(amount, await getPlatformFeeBps(event))
+  ```
+  (drop the `effectiveFeeBps` import and the `acct.platform_fee_bps` argument).
+- `server/utils/stripe/account.ts`: remove `platform_fee_bps` from the `StoreStripeAccount` interface
+  **and** from the `.select(...)` in `getStripeAccountForStore`.
+- `server/api/admin/stores/[storeId]/stripe/index.get.ts`: remove `platform_fee_bps` from the
+  `.select(...)` and from the returned `account` shape/type.
+
+#### A6. Remove the seller's commission write path
+- `server/api/admin/stores/[storeId]/payment-methods.patch.ts`: remove `platformFeeBps` from the zod
+  `Body` and delete the `if (b.platformFeeBps !== undefined) { … }` block. Keep the `enableStripe`
+  handling.
+
+#### A7. Remove the seller commission UI
+- `layers/admin/app/components/PaymentsSetup.vue`: delete `feeBps`, `watch(account, …)` that sets it,
+  `saveFee()`, and the entire "Platform commission" template block. Ensure no leftover references.
+
+#### A8. Superadmin commission API (gated)
+Create two handlers under `server/api/admin/platform/`:
+
+`commission.get.ts`:
+```ts
+import { requireSuperadmin } from '~~/server/utils/auth'
+import { getPlatformFeeBps } from '~~/server/utils/platformSettings'
+export default defineEventHandler(async (event) => {
+  await requireSuperadmin(event)
+  return { feeBps: await getPlatformFeeBps(event) }
+})
+```
+
+`commission.patch.ts`:
+```ts
+import { z } from 'zod'
+import { requireSuperadmin } from '~~/server/utils/auth'
+import { supabaseAdmin } from '~~/server/utils/supabaseAdmin'
+const Body = z.object({ feeBps: z.number().int().min(0).max(10000) })
+export default defineEventHandler(async (event) => {
+  const user = await requireSuperadmin(event)
+  const parsed = Body.safeParse(await readBody(event))
+  if (!parsed.success) throw createError({ statusCode: 422, statusMessage: 'Invalid request' })
+  const { error } = await supabaseAdmin(event)
+    .from('platform_settings')
+    .update({ fee_bps: parsed.data.feeBps, updated_at: new Date().toISOString(), updated_by: user.id })
+    .eq('id', 1)
+  if (error) throw createError({ statusCode: 500, statusMessage: 'Could not update commission' })
+  return { feeBps: parsed.data.feeBps }
+})
+```
+(These live under `/api/admin/**`, which is the seller API prefix, but each handler enforces
+`requireSuperadmin` so only the SaaS owner passes.)
+
+#### A9. Superadmin page
+Create `layers/admin/app/pages/platform/index.vue` → route `/platform`.
+- `definePageMeta({ surface: 'admin', layout: 'admin', requiresAuth: true })`.
+- Client-side guard: redirect non-superadmins away (UX; the API is the real boundary):
+  ```ts
+  const user = useSupabaseUser()
+  const isSuperadmin = computed(() => (user.value?.app_metadata as { global_role?: string } | undefined)?.global_role === 'superadmin')
+  watchEffect(() => { if (user.value && !isSuperadmin.value) navigateTo('/dashboard') })
+  ```
+- Fetch `GET /api/admin/platform/commission`; show the rate as a **percentage** (friendlier) with
+  conversion to bps, plus helper text "e.g. 1.5 = 1.5% taken from every sale". Save via
+  `PATCH /api/admin/platform/commission` with `{ feeBps: Math.round(pct * 100) }`. Show success/error.
+  Display value: `pct = feeBps / 100`.
+- Copy should make clear this is the platform-wide commission applied to **all** stores.
+
+#### A10. Superadmin nav entry
+In `layers/admin/app/layouts/admin.vue`, compute `isSuperadmin` from `useSupabaseUser()` and render a
+"Platform" link (e.g., to `/platform`) **only when** superadmin — in the header or the account dropdown.
+
+#### A11. Config cleanup
+Remove the now-dead `platformFeeBps` key from `runtimeConfig` in `nuxt.config.ts` (and stop relying on
+`NUXT_PLATFORM_FEE_BPS`). `platform_settings` is the single source of truth. Grep the repo to confirm
+no remaining references to `platformFeeBps` / `platform_fee_bps` / `effectiveFeeBps`.
+
+### Part B — Remove the "Accept card payments" toggle from onboarding
+
+#### B1. Add an `embedded` prop to `PaymentsSetup.vue`
+Mirror the existing pattern (e.g., `ThemeEditor` uses an `embedded` prop). Add to `defineProps`:
+`embedded?: boolean`. Wrap the "Accept card payments" `USwitch` block with `v-if="!embedded"` so it
+renders only on the standalone settings page.
+
+#### B2. Wizard passes `embedded`
+In `layers/admin/app/pages/onboarding.vue` Payments step, add `embedded` to the `<PaymentsSetup … />`.
+Leave the standalone `payments.vue` usage unchanged (toggle stays there).
+
+#### B3. Auto-enable cards on connect
+In `server/api/admin/stores/[storeId]/stripe/sync.post.ts`, after `syncStripeAccountStatus(event, acct)`:
+if `acct.charges_enabled`, ensure `'stripe'` is in `stores.payment_methods` (add if missing) and
+`bustStoreCache(subdomain)`. Only ever **add** here (never remove) so a seller who later turns it off in
+settings isn't fought by status syncs. Fetch the store's `subdomain` + `payment_methods` to do this and
+guard with the supabase `{ error }` check. (This makes "connect Stripe in onboarding" result in live
+card payments by default, replacing what the removed toggle used to do.)
+
+> Decision note for the implementer: keep the change to the **return-sync endpoint** (`stripe/sync.post.ts`),
+> not the `account.updated` webhook, to avoid re-enabling cards a seller has deliberately turned off.
+
+---
+
+## 5. Edge cases & gotchas
+- **supabase-js never throws** — check `{ error }` on every `platform_settings` / `stores` write.
+- **Async fee read**: `payment-intent.post.ts` must `await getPlatformFeeBps(event)`. Don't forget the
+  `await`.
+- **Type regen**: after dropping `platform_fee_bps`, every reference in `database.types.ts` (3 spots)
+  must be gone or typecheck fails. Regenerate, don't hand-patch piecemeal if you can avoid it.
+- **Superadmin gating is server-side truth**: the page redirect is UX only; the API `requireSuperadmin`
+  is the boundary. Both required.
+- **Granting yourself superadmin for testing**: set `profiles.global_role = 'superadmin'` for your user
+  and re-login so the Custom Access Token Hook injects the claim. (Without re-login the JWT won't carry it.)
+- **RLS**: `platform_settings` has RLS enabled with no policies — only `supabaseAdmin` (service role)
+  can touch it. Do not add seller-readable policies.
+- **No storefront change**: the commission is invisible to buyers; only the seller's payout is reduced.
+- **Refunds**: leave `refund_application_fee: true` as-is.
+- **ESLint is broken in this env** — verify with `pnpm typecheck` only.
+
+---
+
+## 6. Acceptance criteria
+1. `pnpm typecheck` → **0 errors**.
+2. As a **non-superadmin** store admin: no commission field anywhere (wizard or settings);
+   `PATCH /api/admin/stores/:id/payment-methods` with `{ platformFeeBps }` no longer does anything
+   (field removed from schema); there is no route they can use to change the platform fee.
+3. The **onboarding wizard** Payments step shows connect/status only — **no** "Accept card payments"
+   toggle and **no** commission control.
+4. The **standalone** Payments settings page still shows the "Accept card payments" toggle.
+5. After completing Stripe onboarding (account becomes `charges_enabled`), `stores.payment_methods`
+   includes `'stripe'` automatically (cards live), and the settings toggle can turn it off.
+6. As **superadmin**: `/platform` loads, shows the current global rate, and saving a new rate persists
+   it; a non-superadmin visiting `/platform` is redirected and the API returns 403.
+7. A storefront checkout creates a PaymentIntent whose `application_fee_amount` reflects the **global**
+   `platform_settings.fee_bps` (e.g., set 1.5% → a $100 order yields `application_fee_amount = 150`).
+8. No remaining references to `platform_fee_bps`, `effectiveFeeBps`, or `runtimeConfig.platformFeeBps`.
+
+## 7. Out of scope / non-goals
+- Per-store commission overrides (explicitly removed; do not reintroduce).
+- Recording the applied fee per order (Stripe holds it; not required here).
+- Any buyer/storefront UI changes.
+- Multi-setting platform admin (only the commission is needed now; `platform_settings` can grow later).
+
+---
+
+## 8. Suggested commit slicing
+1. `feat(db): platform_settings singleton; drop per-store platform_fee_bps (+ regen types)`
+2. `feat(payments): read global commission from platform_settings at checkout; remove effectiveFeeBps`
+3. `feat(admin): superadmin commission page + API; nav entry; remove seller commission UI/API`
+4. `feat(onboarding): hide Accept-cards toggle in wizard; auto-enable cards on Stripe connect`
+
+Verify `pnpm typecheck` after each slice.
