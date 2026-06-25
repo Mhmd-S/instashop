@@ -42,12 +42,19 @@ export interface StoreArtDirection {
   eyebrow: { label: string; rule: boolean }
 }
 
-// Shared display-heading treatment: feel-driven weight + tracking, scale-driven leading.
-// These vars are emitted by tokensToCssVars (cssVars.ts) with main.css fallbacks, so
-// typography.feel / typography.scale finally shape the headings instead of being
-// discarded. Applied ONLY to display/section headings — never globally.
+// Shared display-heading treatment, consuming the feel/scale CSS vars emitted by
+// tokensToCssVars (cssVars.ts) with main.css fallbacks — so typography.feel and
+// typography.scale finally shape the headings instead of being discarded:
+//   --t-heading-tracking / --t-heading-weight / --t-heading-transform ← feel
+//   --t-leading-display ← scale (and the H1 sizes below multiply by --t-scale ← scale)
+// Applied ONLY to display headings — never globally (would fight per-element utilities).
 const DISPLAY =
-  'font-heading text-balance tracking-[var(--t-heading-tracking)] [font-weight:var(--t-heading-weight)] leading-[var(--t-leading-display)]'
+  'font-heading text-balance tracking-[var(--t-heading-tracking)] [font-weight:var(--t-heading-weight)] [text-transform:var(--t-heading-transform)] leading-[var(--t-leading-display)]'
+
+// Display heading sizes, scale-aware: typography.scale (--t-scale) multiplies the base
+// so an "airy" shop reads larger and a "tight" one tighter.
+const H1 = 'text-[length:calc(2.75rem*var(--t-scale))] sm:text-[length:calc(4rem*var(--t-scale))]'
+const H1_BIG = 'text-[length:calc(3.25rem*var(--t-scale))] sm:text-[length:calc(5rem*var(--t-scale))]'
 
 // Section vertical rhythm per layout archetype (on top of the density --t-space-* vars).
 const LAYOUT_RHYTHM: Record<ArtDirection['layout'], string> = {
@@ -57,12 +64,23 @@ const LAYOUT_RHYTHM: Record<ArtDirection['layout'], string> = {
   boutique: 'py-16 sm:py-24',
 }
 
-// Hero composition per variant. `heading` pairs a size with the DISPLAY treatment.
-const HERO: Record<ArtDirection['hero'], Omit<HeroPresentation, 'variant' | 'section' | 'eyebrow'>> = {
-  split: { align: 'left', heading: `${DISPLAY} text-5xl sm:text-7xl`, rule: 'h-1.5 w-16 rounded-full bg-primary', overlay: false },
-  'full-bleed': { align: 'left', heading: `${DISPLAY} text-5xl sm:text-7xl`, rule: 'h-px w-16 bg-accent', overlay: true },
-  centered: { align: 'center', heading: `${DISPLAY} text-5xl sm:text-7xl`, rule: 'h-px w-20 bg-accent/70', overlay: false },
-  offset: { align: 'left', heading: `${DISPLAY} text-6xl sm:text-8xl`, rule: 'h-1.5 w-16 rounded-full bg-primary', overlay: false },
+// Hero composition per variant. Exported so the hero component can recompute classes
+// for an EFFECTIVE variant (e.g. full-bleed degrades to centered when there's no image)
+// rather than binding the declared variant's rule. `heading` pairs a size with DISPLAY.
+export function heroVariantClasses(
+  variant: ArtDirection['hero'],
+): Pick<HeroPresentation, 'align' | 'heading' | 'rule' | 'overlay'> {
+  switch (variant) {
+    case 'full-bleed':
+      return { align: 'left', heading: `${DISPLAY} ${H1}`, rule: 'h-px w-16 bg-accent', overlay: true }
+    case 'centered':
+      return { align: 'center', heading: `${DISPLAY} ${H1}`, rule: 'h-px w-20 bg-accent/70', overlay: false }
+    case 'offset':
+      return { align: 'left', heading: `${DISPLAY} ${H1_BIG}`, rule: 'h-1.5 w-16 rounded-full bg-primary', overlay: false }
+    case 'split':
+    default:
+      return { align: 'left', heading: `${DISPLAY} ${H1}`, rule: 'h-1.5 w-16 rounded-full bg-primary', overlay: false }
+  }
 }
 
 const CARD_VARIANT: Record<ArtDirection['productCard'], { aspect: string; framed: boolean; align: 'left' | 'center' }> = {
@@ -92,7 +110,7 @@ export function useStoreArtDirection() {
     const vibe = pickVibe(state.value.mood)
     const preset = VIBE_PRESETS[vibe]
     const ad = state.value.artDirection ?? defaultsFromVibe(vibe)
-    const heroCfg = HERO[ad.hero]
+    const heroCfg = heroVariantClasses(ad.hero)
     const cardCfg = CARD_VARIANT[ad.productCard]
     return {
       layout: ad.layout,

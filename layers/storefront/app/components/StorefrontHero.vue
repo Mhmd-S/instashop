@@ -25,7 +25,10 @@ const variant = computed(() => {
   if (v === 'full-bleed' && !imageUrl.value) return 'centered'
   return v
 })
-const centered = computed(() => variant.value === 'centered' || (ad.value.hero.align === 'center' && !imageUrl.value))
+// Recompute the composition classes for the EFFECTIVE variant so a degraded
+// full-bleed→centered hero gets the centred rule, not the leftover full-bleed one.
+const heroCfg = computed(() => heroVariantClasses(variant.value))
+const centered = computed(() => variant.value === 'centered' || (heroCfg.value.align === 'center' && !imageUrl.value))
 
 function scrollTo(id: string) {
   const el = document.getElementById(id)
@@ -47,8 +50,8 @@ function scrollTo(id: string) {
         <p class="flex items-center gap-2.5 text-white/80" :class="ad.hero.eyebrow">
           <span class="h-px w-7 bg-accent" />@{{ props.store?.subdomain }}
         </p>
-        <h1 class="mt-4 text-white" :class="ad.hero.heading">{{ props.store?.name ?? 'Store' }}</h1>
-        <div class="mt-5" :class="ad.hero.rule" />
+        <h1 class="mt-4 text-white" :class="heroCfg.heading">{{ props.store?.name ?? 'Store' }}</h1>
+        <div class="mt-5" :class="heroCfg.rule" />
         <p class="mt-6 max-w-lg text-pretty text-lg text-white/85 leading-[var(--t-leading-body)]">{{ heroLine }}</p>
         <div class="mt-8 flex flex-wrap gap-3">
           <UButton size="lg" color="primary" v-bind="cta" label="Shop all" trailing-icon="i-lucide-arrow-down" @click="scrollTo('products')" />
@@ -77,9 +80,9 @@ function scrollTo(id: string) {
           <span class="h-px w-7 bg-accent" />@{{ props.store?.subdomain }}
         </p>
 
-        <h1 class="mt-4 text-highlighted" :class="ad.hero.heading">{{ props.store?.name ?? 'Store' }}</h1>
+        <h1 class="mt-4 text-highlighted" :class="heroCfg.heading">{{ props.store?.name ?? 'Store' }}</h1>
 
-        <div class="mt-5" :class="[ad.hero.rule, centered ? 'mx-auto' : '']" />
+        <div class="mt-5" :class="[heroCfg.rule, centered ? 'mx-auto' : '']" />
 
         <p
           class="mt-6 max-w-lg text-pretty text-lg text-muted leading-[var(--t-leading-body)]"

@@ -1,0 +1,53 @@
+name: Scheduled cron jobs
+
+# Replaces Vercel Cron (Railway has no built-in HTTP cron). Pings the app's
+# secret-guarded cron endpoints on a schedule. Each endpoint is GET +
+# `Authorization: Bearer $CRON_SECRET` and refuses anything else.
+#
+# Setup (one-time):
+#   - Secret  CRON_SECRET   = same value as NUXT_CRON_SECRET in Railway
+#   - Variable CRON_BASE_URL = public base URL, e.g. https://app.insteshop.app
+#     (the Railway service URL also works before the custom domain is live)
+# NOTE: `schedule` only runs from the DEFAULT branch, in UTC, and may be delayed
+# a few minutes under load — fine for daily jobs.
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC — refresh Instagram tokens (60-day expiry)
+    - cron: "0 4 * * *"   # 04:00 UTC — sweep abandoned unpaid Stripe orders
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Run manually"
+        type: choice
+        options: [both, ig-refresh, stripe-sweep]
+        default: both
+
+concurrency:
+  group: scheduled-cron
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ig-refresh:
+    name: Refresh Instagram tokens
+    if: github.event.schedule == '0 3 * * *' || (github.event_name == 'workflow_dispatch' && inputs.job != 'stripe-sweep')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/ig/cron/refresh-tokens
+        run: |
+          curl --fail-with-body --show-error --silent --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.CRON_BASE_URL }}/api/ig/cron/refresh-tokens"
+
+  stripe-sweep:
+    name: Sweep abandoned unpaid orders
+    if: github.event.schedule == '0 4 * * *' || (github.event_name == 'workflow_dispatch' && inputs.job != 'ig-refresh')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/stripe/cron/sweep-unpaid
+        run: |
+          curl --fail-with-body --show-error --silent --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.CRON_BASE_URL }}/api/stripe/cron/sweep-unpaid"

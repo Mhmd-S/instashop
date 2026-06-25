@@ -71,10 +71,14 @@ const featured = computed(() =>
         </UContainer>
       </section>
 
-      <!-- Featured spotlight: a larger, image-forward teaser of the first few items. -->
+      <!-- Featured spotlight: a larger, image-forward teaser of the first few items.
+           Surface is a light tint of the actual bg (same pattern as hero/footer) so
+           body text stays >=4.5:1 regardless of the neutral ramp — which isn't
+           contrast-anchored on logo-less / hand-edited themes. The teaser intentionally
+           re-surfaces the first items that also appear in the full grid below. -->
       <section
         v-else-if="sec === 'featured' && featured.length"
-        class="scroll-mt-20 border-b border-default bg-[var(--t-neutral-50)] py-(--t-space-section) sm:py-(--t-space-section-lg)"
+        class="scroll-mt-20 border-b border-default bg-[color-mix(in_oklab,var(--ui-primary)_5%,var(--ui-bg))] py-(--t-space-section) sm:py-(--t-space-section-lg)"
       >
         <UContainer>
           <StorefrontEyebrow>Featured</StorefrontEyebrow>

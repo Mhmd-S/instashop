@@ -68,9 +68,10 @@ export interface DesignTokens {
   buttonStyle: typeof ALLOWED_BUTTON[number]
   shadow: 'none' | 'subtle' | 'pronounced'
   mood: Array<typeof ALLOWED_MOOD[number]>
-  // Structural archetype + section composition the storefront renders. Optional so
-  // pre-existing themes (persisted before this field existed) still validate; the
-  // renderer falls back to a mood-derived default when absent.
+  // Structural archetype + section composition the storefront renders. Required on the
+  // type; legacy themes persisted before this field existed stay compatible because
+  // validateAndRepair always materializes it (repairArtDirection) and the storefront
+  // falls back to a mood-derived default (useStoreArtDirection) when state is absent.
   artDirection: ArtDirection
   keywords: string[] // admin text display only (H6) — never injected into CSS/HTML
 }
