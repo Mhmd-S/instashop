@@ -376,6 +376,7 @@ async function createStore() {
         <PaymentsSetup
           :store-id="storeId ?? ''"
           :return-path="onboardingStepUrl(storeId ?? '', 'payments')"
+          embedded
           @changed="refreshStatus"
         />
       </div>

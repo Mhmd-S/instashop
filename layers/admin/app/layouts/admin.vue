@@ -7,7 +7,15 @@ async function signOut() {
   window.location.href = '/login'
 }
 
-const menuItems = [[{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: signOut }]]
+// Platform settings are SaaS-owner-only — surface the entry just to superadmins.
+const isSuperadmin = computed(() => (user.value?.app_metadata as { global_role?: string } | undefined)?.global_role === 'superadmin')
+
+const menuItems = computed(() => [
+  ...(isSuperadmin.value
+    ? [[{ label: 'Platform', icon: 'i-lucide-settings-2', to: '/platform' }]]
+    : []),
+  [{ label: 'Sign out', icon: 'i-lucide-log-out', onSelect: signOut }],
+])
 </script>
 
 <template>

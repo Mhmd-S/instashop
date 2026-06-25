@@ -798,6 +798,35 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          fee_bps: number
+          id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          fee_bps?: number
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          fee_bps?: number
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           category_id: string
@@ -1244,7 +1273,6 @@ export type Database = {
           details_submitted: boolean
           id: string
           payouts_enabled: boolean
-          platform_fee_bps: number | null
           requirements: Json | null
           store_id: string
           stripe_account_id: string
@@ -1256,7 +1284,6 @@ export type Database = {
           details_submitted?: boolean
           id?: string
           payouts_enabled?: boolean
-          platform_fee_bps?: number | null
           requirements?: Json | null
           store_id: string
           stripe_account_id: string
@@ -1268,7 +1295,6 @@ export type Database = {
           details_submitted?: boolean
           id?: string
           payouts_enabled?: boolean
-          platform_fee_bps?: number | null
           requirements?: Json | null
           store_id?: string
           stripe_account_id?: string

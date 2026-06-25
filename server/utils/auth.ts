@@ -21,6 +21,14 @@ export async function requireUser(event: H3Event) {
   }
 }
 
+// Require the caller to be a platform superadmin (the SaaS owner), else 403.
+export async function requireSuperadmin(event: H3Event) {
+  const user = await requireUser(event)
+  const role = (user.app_metadata as { global_role?: string } | undefined)?.global_role
+  if (role !== 'superadmin') throw createError({ statusCode: 403, statusMessage: 'Superadmin only' })
+  return user
+}
+
 export type MemberRole = 'staff' | 'admin' | 'owner'
 const ROLE_RANK: Record<MemberRole, number> = { staff: 1, admin: 2, owner: 3 }
 
