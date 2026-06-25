@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const admin = supabaseAdmin(event)
   const { data } = await admin
     .from('stripe_accounts')
-    .select('stripe_account_id, details_submitted, charges_enabled, payouts_enabled, platform_fee_bps, connected_at')
+    .select('stripe_account_id, details_submitted, charges_enabled, payouts_enabled, connected_at')
     .eq('store_id', storeId)
     .maybeSingle()
 
@@ -22,7 +22,6 @@ export default defineEventHandler(async (event) => {
     details_submitted: boolean
     charges_enabled: boolean
     payouts_enabled: boolean
-    platform_fee_bps: number | null
     connected_at: string
   }
 

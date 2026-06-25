@@ -44,4 +44,9 @@ export interface TenantState {
   // CTAs (everything else theme-related is applied via CSS variables). Null when
   // the store has no active theme or off the storefront surface.
   buttonStyle: DesignTokens['buttonStyle'] | null
+  // The active theme's mood tags (up to 4, e.g. ['luxury','elegant']). Unlike the
+  // palette/font tokens — which apply purely via CSS variables — mood shapes layout
+  // emphasis & rhythm, so the storefront needs it in JS (see useStoreMood). Null
+  // when the store has no active theme or off the storefront surface.
+  mood: DesignTokens['mood'] | null
 }

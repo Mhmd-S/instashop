@@ -7,7 +7,6 @@ export interface StoreStripeAccount {
   details_submitted: boolean
   charges_enabled: boolean
   payouts_enabled: boolean
-  platform_fee_bps: number | null
 }
 
 // The connected-account row for a store (service-role). Null if not onboarded.
@@ -17,7 +16,7 @@ export async function getStripeAccountForStore(
 ): Promise<StoreStripeAccount | null> {
   const { data } = await supabaseAdmin(event)
     .from('stripe_accounts')
-    .select('stripe_account_id, details_submitted, charges_enabled, payouts_enabled, platform_fee_bps')
+    .select('stripe_account_id, details_submitted, charges_enabled, payouts_enabled')
     .eq('store_id', storeId)
     .maybeSingle()
   return (data as StoreStripeAccount | null) ?? null

@@ -20,7 +20,15 @@ const products = computed(() => data.value?.products ?? [])
 
     <UContainer class="py-10">
       <UButton to="/" icon="i-lucide-arrow-left" label="All products" variant="link" color="neutral" size="sm" class="px-0" />
-      <h1 class="mt-3 mb-6 font-heading text-2xl font-semibold text-highlighted">{{ category?.name }}</h1>
+      <div class="mb-7 mt-3 flex items-end justify-between gap-4">
+        <div>
+          <StorefrontEyebrow>Category</StorefrontEyebrow>
+          <h1 class="mt-2 font-heading text-2xl font-semibold tracking-tight text-highlighted sm:text-3xl">{{ category?.name }}</h1>
+        </div>
+        <span v-if="products.length" class="shrink-0 pb-1 text-sm text-muted">
+          {{ products.length }} {{ products.length === 1 ? 'item' : 'items' }}
+        </span>
+      </div>
       <StorefrontProductGrid :products="products" empty-text="No products in this category yet." />
     </UContainer>
   </main>

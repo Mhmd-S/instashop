@@ -12,6 +12,7 @@ export default defineNuxtPlugin(() => {
     hostInfo: null,
     logo: null,
     buttonStyle: null,
+    mood: null,
   }))
   const tokens = ctx?.themeTokens as DesignTokens | null | undefined
   state.value = {
@@ -20,5 +21,6 @@ export default defineNuxtPlugin(() => {
     hostInfo: ctx?.hostInfo ?? null,
     logo: (ctx?.themeLogo as StoreLogo | null) ?? null,
     buttonStyle: tokens?.buttonStyle ?? null,
+    mood: tokens?.mood ?? null,
   }
 })

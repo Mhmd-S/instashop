@@ -59,7 +59,6 @@ export default defineNuxtConfig({
     cronSecret: '', // guards /api/ig/cron/* (Vercel Cron sends it as a Bearer token)
     stripeSecretKey: '',
     stripeWebhookSecret: '',
-    platformFeeBps: '0', // default Connect application fee in basis points (150 = 1.5%)
     resendApiKey: '',
     resendFrom: '',
     public: {

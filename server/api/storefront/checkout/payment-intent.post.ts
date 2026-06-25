@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { supabaseAdmin } from '~~/server/utils/supabaseAdmin'
-import { stripe, effectiveFeeBps, applicationFeeAmount } from '~~/server/utils/stripe/client'
+import { stripe, applicationFeeAmount } from '~~/server/utils/stripe/client'
 import { getStripeAccountForStore } from '~~/server/utils/stripe/account'
+import { getPlatformFeeBps } from '~~/server/utils/platformSettings'
 
 const Body = z.object({
   orderId: z.string().uuid(),
@@ -67,7 +68,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const fee = applicationFeeAmount(amount, effectiveFeeBps(event, acct.platform_fee_bps))
+  const fee = applicationFeeAmount(amount, await getPlatformFeeBps(event))
 
   const pi = await s.paymentIntents.create(
     {

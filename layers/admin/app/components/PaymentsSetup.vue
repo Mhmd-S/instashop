@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Self-contained Stripe Connect setup: connect/onboarding status, the accept-cards
-// toggle and the commission override. Rendered inline in the onboarding wizard and
-// on the standalone Payments page, so the flow keeps the same design in both places.
+// Self-contained Stripe Connect setup: connect/onboarding status and the accept-cards
+// toggle. Rendered inline in the onboarding wizard and on the standalone Payments page,
+// so the flow keeps the same design in both places.
 //
 // It also owns the Stripe return landing: Account Links bounce the seller back to
 // whichever page launched the flow with ?stripe=return (or ?stripe=refresh when a
@@ -12,10 +12,14 @@ const props = defineProps<{
   // (the connect endpoint then defaults to it); the wizard passes its step URL so the
   // seller lands back inside the onboarding design.
   returnPath?: string
+  // Hides settings-level controls (the accept-cards toggle) when mounted inside the
+  // onboarding wizard — connecting Stripe auto-enables cards, so the toggle belongs
+  // only on the standalone Payments settings page.
+  embedded?: boolean
 }>()
 
-// Emitted after the payment state changes (return-sync, toggle, commission) so a
-// parent that tracks setup status (the wizard) can refresh its stepper/counters.
+// Emitted after the payment state changes (return-sync, toggle) so a parent that
+// tracks setup status (the wizard) can refresh its stepper/counters.
 const emit = defineEmits<{ changed: [] }>()
 
 const route = useRoute()
@@ -37,9 +41,6 @@ const detailsSubmitted = computed(() => !!account.value?.details_submitted)
 const msg = ref<string | null>(null)
 const err = ref<string | null>(null)
 const busy = ref(false)
-
-const feeBps = ref<number | null>(account.value?.platform_fee_bps ?? null)
-watch(account, (a) => { feeBps.value = a?.platform_fee_bps ?? null })
 
 onMounted(async () => {
   if (route.query.stripe === 'return') {
@@ -98,19 +99,6 @@ async function toggleStripe(enable: boolean) {
     emit('changed')
   } catch (e) {
     err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not update payment methods'
-  }
-}
-
-async function saveFee() {
-  err.value = null
-  msg.value = null
-  try {
-    await $fetch(`/api/admin/stores/${props.storeId}/payment-methods`, { method: 'PATCH', body: { platformFeeBps: feeBps.value } })
-    await refresh()
-    msg.value = 'Commission updated.'
-    emit('changed')
-  } catch (e) {
-    err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not update commission'
   }
 }
 </script>
@@ -185,26 +173,14 @@ async function saveFee() {
         />
       </div>
 
-      <!-- Accept cards toggle (only meaningful once charges are enabled) -->
-      <div v-else class="mt-5 flex items-center justify-between gap-4 rounded-lg border border-default p-4">
+      <!-- Accept cards toggle (only meaningful once charges are enabled). Hidden in the
+           onboarding wizard (embedded): connecting Stripe auto-enables cards there. -->
+      <div v-else-if="!embedded" class="mt-5 flex items-center justify-between gap-4 rounded-lg border border-default p-4">
         <div>
           <p class="font-medium text-highlighted">Accept card payments</p>
           <p class="text-sm text-muted">Show Stripe at checkout on your storefront.</p>
         </div>
         <USwitch :model-value="stripeEnabled" @update:model-value="toggleStripe" />
-      </div>
-
-      <!-- Commission override -->
-      <div class="mt-4 rounded-lg border border-default p-4">
-        <p class="font-medium text-highlighted">Platform commission</p>
-        <p class="text-sm text-muted">Basis points taken per sale. Leave blank for the platform default. 150 = 1.5%.</p>
-        <div class="mt-3 flex items-center gap-2">
-          <UInput
-            v-model.number="feeBps" type="number" :min="0" :max="10000"
-            placeholder="default" class="w-40" trailing-icon="i-lucide-percent"
-          />
-          <UButton color="neutral" variant="soft" label="Save" icon="i-lucide-save" @click="saveFee" />
-        </div>
       </div>
     </UCard>
 
