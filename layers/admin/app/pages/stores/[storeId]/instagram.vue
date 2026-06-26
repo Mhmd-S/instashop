@@ -148,6 +148,24 @@ async function disconnect() {
       />
     </UCard>
 
+    <UCard class="mt-6">
+      <div class="flex items-start gap-3">
+        <UIcon name="i-lucide-link" class="size-5 text-muted mt-0.5 shrink-0" />
+        <div>
+          <p class="font-medium text-highlighted">Add from a link instead</p>
+          <p class="text-sm text-muted mt-1">
+            Don't want to connect your account? Paste a post's link and caption and we'll draft the product —
+            you just add the photo. Best for adding a few items quickly.
+          </p>
+          <UButton
+            :to="`/stores/${storeId}/products/from-instagram` + (ret ? `?return=${encodeURIComponent(ret)}` : '')"
+            class="mt-3" icon="i-lucide-plus" color="neutral" variant="subtle"
+            label="Add from a post link"
+          />
+        </div>
+      </div>
+    </UCard>
+
     <IgFixtureLoader :store-id="storeId" class="mt-6" @seeded="refresh" />
   </UContainer>
 </template>
