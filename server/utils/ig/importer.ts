@@ -201,12 +201,9 @@ async function loadExistingProductKeys(
   return out
 }
 
-async function createProduct(
-  admin: SupabaseClient,
-  storeId: string,
-  o: { title: string; priceMinor: number; currency: string; description: string | null; needsReview: boolean; m: IgMedia },
-): Promise<string> {
-  const title = (o.title || 'Imported product').slice(0, 80)
+// First free `<base>` / `<base>-2` / … slug for a title within the store. Shared by
+// the IG import and the manual "add from a link" import so both stay collision-safe.
+export async function uniqueProductSlug(admin: SupabaseClient, storeId: string, title: string): Promise<string> {
   const base = slugify(title) || 'product'
   let slug = base
   for (let i = 2; i < 200; i++) {
@@ -214,6 +211,16 @@ async function createProduct(
     if (!clash) break
     slug = `${base}-${i}`
   }
+  return slug
+}
+
+async function createProduct(
+  admin: SupabaseClient,
+  storeId: string,
+  o: { title: string; priceMinor: number; currency: string; description: string | null; needsReview: boolean; m: IgMedia },
+): Promise<string> {
+  const title = (o.title || 'Imported product').slice(0, 80)
+  const slug = await uniqueProductSlug(admin, storeId, title)
   const { data, error } = await admin
     .from('products')
     .insert({
@@ -439,7 +446,7 @@ function titleCaseCategory(name: string): string {
     .slice(0, 60)
 }
 
-async function assignCategories(admin: SupabaseClient, storeId: string, productId: string, names: string[]) {
+export async function assignCategories(admin: SupabaseClient, storeId: string, productId: string, names: string[]) {
   for (const name of names) {
     const slug = slugify(name)
     if (!slug) continue

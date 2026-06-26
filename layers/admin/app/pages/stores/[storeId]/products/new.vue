@@ -62,5 +62,11 @@ async function submit() {
         <p class="text-xs text-muted">You'll add a photo on the next screen. New products start as drafts.</p>
       </form>
     </UCard>
+
+    <p class="text-sm text-muted mt-4">
+      Selling something from Instagram?
+      <ULink :to="`/stores/${storeId}/products/from-instagram${retQs}`" class="text-primary">Add it from the post link</ULink>
+      and let AI draft the details.
+    </p>
   </div>
 </template>
