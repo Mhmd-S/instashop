@@ -1,22 +1,14 @@
 <script setup lang="ts">
 // Shared chrome + typography for the public legal pages (/privacy, /terms,
 // /data-deletion). Authors pass a title; the body is plain semantic HTML in the
-// default slot, styled by the `.legal-prose` rules below.
-import { BRAND } from '~~/shared/brand'
+// default slot, styled by the `.legal-prose` rules below. Header/footer come from
+// the shared marketing shell so the legal pages match the rest of the apex site.
 defineProps<{ title: string; updated?: string }>()
-const { adminUrl } = useSurfaceUrls()
 </script>
 
 <template>
-  <div class="min-h-screen bg-default text-default flex flex-col">
-    <header class="border-b border-default">
-      <UContainer class="py-4 flex items-center justify-between">
-        <NuxtLink to="/" aria-label="Home"><BrandLogo /></NuxtLink>
-        <UButton :to="adminUrl('/signup')" external label="Get started" color="primary" size="sm" />
-      </UContainer>
-    </header>
-
-    <UContainer class="flex-1 py-12 sm:py-16">
+  <MarketingShell>
+    <UContainer class="py-12 sm:py-16">
       <div class="mx-auto max-w-3xl">
         <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-highlighted">{{ title }}</h1>
         <p v-if="updated" class="mt-2 text-sm text-dimmed">Last updated: {{ updated }}</p>
@@ -25,19 +17,7 @@ const { adminUrl } = useSurfaceUrls()
         </div>
       </div>
     </UContainer>
-
-    <footer class="border-t border-default">
-      <UContainer class="py-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-muted">
-        <span>© {{ BRAND.name }}</span>
-        <nav class="flex flex-wrap gap-x-5 gap-y-2">
-          <NuxtLink to="/" class="hover:text-highlighted">Home</NuxtLink>
-          <NuxtLink to="/privacy" class="hover:text-highlighted">Privacy</NuxtLink>
-          <NuxtLink to="/terms" class="hover:text-highlighted">Terms</NuxtLink>
-          <NuxtLink to="/data-deletion" class="hover:text-highlighted">Data deletion</NuxtLink>
-        </nav>
-      </UContainer>
-    </footer>
-  </div>
+  </MarketingShell>
 </template>
 
 <style>
