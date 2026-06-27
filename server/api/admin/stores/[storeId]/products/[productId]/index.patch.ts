@@ -8,7 +8,7 @@ const Body = z.object({
   description: z.string().trim().max(5000).nullable().optional(),
   price_minor: z.number().int().min(0).max(100_000_000).optional(),
   stock: z.number().int().min(0).nullable().optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional(),
+  published: z.boolean().optional(),
   category_ids: z.array(z.string().uuid()).max(50).optional(),
 })
 
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   // build a partial update from provided keys (slug stays stable on title edits)
   const patch = parsed.data
   const update: Record<string, unknown> = {}
-  for (const k of ['title', 'description', 'price_minor', 'stock', 'status'] as const) {
+  for (const k of ['title', 'description', 'price_minor', 'stock', 'published'] as const) {
     if (k in patch) update[k] = patch[k]
   }
   const hasCats = patch.category_ids !== undefined

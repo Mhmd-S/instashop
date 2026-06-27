@@ -21,7 +21,7 @@ async function submit() {
     const priceMinor = Math.round(Number.parseFloat(price.value || '0') * 100)
     const { product } = await $fetch(`/api/admin/stores/${storeId}/products`, {
       method: 'POST',
-      body: { title: title.value, description: description.value || null, price_minor: priceMinor, status: 'draft' },
+      body: { title: title.value, description: description.value || null, price_minor: priceMinor, published: false },
     })
     await navigateTo(`/stores/${storeId}/products/${product.id}${retQs.value}`)
   } catch (e) {
@@ -59,7 +59,7 @@ async function submit() {
           icon="i-lucide-plus"
           :label="loading ? 'Creating…' : 'Create product'"
         />
-        <p class="text-xs text-muted">You'll add a photo on the next screen. New products start as drafts.</p>
+        <p class="text-xs text-muted">You'll add a photo on the next screen. New products start hidden — publish when ready.</p>
       </form>
     </UCard>
   </div>

@@ -65,30 +65,115 @@ const igConnectError = computed(() =>
 )
 
 // Posts import automatically once Instagram is connected — no button needed.
-const productCount = computed(() => status.value?.steps.products.count ?? 0)
 const importing = ref(false)
 const igMsg = ref<string | null>(null)
 const igError = ref(false)
+
+// The connected state is a single checklist; this drives its header/footnote.
+// 'running' also covers the brief moment before the import has kicked off.
+const importPhase = computed<'running' | 'done' | 'error'>(() => {
+  if (igError.value) return 'error'
+  if (!importing.value && igMsg.value) return 'done'
+  return 'running'
+})
+
+// The import streams real progress (see ig/sync-stream): we show a checklist of the
+// backend's stages and tick each one as it actually completes — never on a timer.
+type ImportStepKey = 'fetch' | 'analyze' | 'products' | 'branding'
+interface ImportResult {
+  total: number
+  imported: number
+  merged: number
+  branding: number
+  skipped: number
+  needsReview: number
+  usedAi: boolean
+}
+const IMPORT_STEPS: { key: ImportStepKey; doing: string; done: string }[] = [
+  { key: 'fetch', doing: 'Fetching your Instagram posts', done: 'Fetched your Instagram posts' },
+  { key: 'analyze', doing: 'Sorting posts into products', done: 'Sorted posts into products' },
+  { key: 'products', doing: 'Building product drafts & photos', done: 'Built product drafts & photos' },
+  { key: 'branding', doing: 'Saving lifestyle & branding shots', done: 'Saved lifestyle & branding shots' },
+]
+interface ImportStepState { status: 'pending' | 'active' | 'done'; current?: number; total?: number }
+function freshSteps(): Record<ImportStepKey, ImportStepState> {
+  return { fetch: { status: 'pending' }, analyze: { status: 'pending' }, products: { status: 'pending' }, branding: { status: 'pending' } }
+}
+const importSteps = reactive(freshSteps())
+
+function applyProgress(ev: { step: ImportStepKey; status: 'active' | 'done'; current?: number; total?: number }) {
+  const s = importSteps[ev.step]
+  if (!s) return
+  s.status = ev.status
+  s.current = ev.current
+  s.total = ev.total
+  // Any earlier step that never sent its "done" (events can be coalesced when a stage
+  // is instant) is implicitly complete once a later one starts.
+  const idx = IMPORT_STEPS.findIndex((x) => x.key === ev.step)
+  for (let i = 0; i < idx; i++) {
+    const prev = importSteps[IMPORT_STEPS[i]!.key]
+    if (prev.status !== 'done') prev.status = 'done'
+  }
+}
+
+function resultMessage(res: ImportResult): string {
+  const bits = [`${res.imported} new product${res.imported === 1 ? '' : 's'}`]
+  if (res.merged) bits.push(`${res.merged} merged`)
+  if (res.branding) bits.push(`${res.branding} branding post${res.branding === 1 ? '' : 's'}`)
+  if (res.needsReview) bits.push(`${res.needsReview} to review`)
+  return (
+    `Imported ${bits.join(', ')} from ${res.total} post${res.total === 1 ? '' : 's'}` +
+    (res.skipped ? `, ${res.skipped} already imported` : '') +
+    (res.usedAi ? '.' : ' (no AI key — used a simple import).')
+  )
+}
+
 async function importPosts() {
   importing.value = true
   igMsg.value = null
   igError.value = false
+  Object.assign(importSteps, freshSteps())
   try {
-    const res = await $fetch(`/api/admin/stores/${storeId.value}/ig/sync`, { method: 'POST' })
-    const bits = [`${res.imported} new product${res.imported === 1 ? '' : 's'}`]
-    if (res.merged) bits.push(`${res.merged} merged`)
-    if (res.branding) bits.push(`${res.branding} branding post${res.branding === 1 ? '' : 's'}`)
-    if (res.needsReview) bits.push(`${res.needsReview} to review`)
-    igMsg.value =
-      `Imported ${bits.join(', ')} from ${res.total} post${res.total === 1 ? '' : 's'}` +
-      (res.skipped ? `, ${res.skipped} already imported` : '') +
-      (res.usedAi ? '.' : ' (no AI key — used a simple import).')
-    await refreshStatus()
+    const res = await fetch(`/api/admin/stores/${storeId.value}/ig/sync-stream`, {
+      method: 'POST',
+      headers: { accept: 'application/x-ndjson' },
+    })
+    if (!res.ok || !res.body) throw new Error(`Import failed (${res.status})`)
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+    let result: ImportResult | null = null
+    let errMsg: string | null = null
+
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      let nl: number
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim()
+        buf = buf.slice(nl + 1)
+        if (!line) continue
+        const ev = JSON.parse(line) as
+          | { type: 'progress'; step: ImportStepKey; status: 'active' | 'done'; current?: number; total?: number }
+          | { type: 'result'; result: ImportResult }
+          | { type: 'error'; message: string }
+        if (ev.type === 'progress') applyProgress(ev)
+        else if (ev.type === 'result') result = ev.result
+        else if (ev.type === 'error') errMsg = ev.message
+      }
+    }
+
+    if (errMsg) throw new Error(errMsg)
+    if (result) {
+      igMsg.value = resultMessage(result)
+      await refreshStatus()
+    }
   } catch (e) {
     igError.value = true
-    igMsg.value =
-      ((e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Import failed') +
-      ' — refresh the page to try again.'
+    const msg = (e as Error).message || 'Import failed'
+    igMsg.value = `${msg} — refresh the page to try again.`
   } finally {
     importing.value = false
   }
@@ -298,26 +383,77 @@ async function createStore() {
             <IgFixtureLoader :store-id="storeId ?? ''" @seeded="refreshStatus" />
           </template>
 
-          <!-- Connected → posts import automatically; just continue with “Next”. -->
+          <!-- Connected → posts import automatically. One live checklist tells the
+               whole story: it ticks each backend stage as it actually completes
+               (streamed from ig/sync-stream) and stays put, fully checked, when done.
+               No separate "connected" or summary cards — the list says it all. -->
           <template v-else>
-            <UAlert
-              color="success" variant="soft" icon="i-lucide-circle-check"
-              title="Instagram connected"
-              :description="`${productCount} product${productCount === 1 ? '' : 's'} in your store so far.`"
-            />
-            <div v-if="importing" class="flex items-center gap-2 text-sm text-muted">
-              <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
-              Importing your posts…
+            <div class="rounded-xl border border-default bg-elevated/40 p-5">
+              <div class="flex items-center gap-2.5">
+                <UIcon
+                  :name="importPhase === 'done'
+                    ? 'i-lucide-circle-check'
+                    : importPhase === 'error'
+                      ? 'i-lucide-triangle-alert'
+                      : 'i-lucide-loader-circle'"
+                  class="size-4 shrink-0"
+                  :class="importPhase === 'done'
+                    ? 'text-success'
+                    : importPhase === 'error'
+                      ? 'text-warning'
+                      : 'animate-spin text-primary'"
+                />
+                <h3 class="font-semibold text-highlighted">
+                  {{ importPhase === 'done'
+                    ? 'Imported from Instagram'
+                    : importPhase === 'error'
+                      ? 'Instagram import hit a snag'
+                      : 'Setting up your store from Instagram…' }}
+                </h3>
+              </div>
+              <p class="text-sm text-muted mt-1 mb-4">
+                {{ importPhase === 'done'
+                  ? 'Your posts are in as draft products — set prices and publish under Products. Hit “Next” to keep going.'
+                  : importPhase === 'error'
+                    ? 'We saved what we could. Refresh the page to try the rest again, or just keep going.'
+                    : 'This usually takes under a minute. You can keep setting up — we\'ll finish in the background.' }}
+              </p>
+              <ul class="space-y-2.5">
+                <li
+                  v-for="step in IMPORT_STEPS"
+                  :key="step.key"
+                  class="flex items-center gap-3 text-sm"
+                >
+                  <UIcon
+                    :name="importSteps[step.key].status === 'done'
+                      ? 'i-lucide-circle-check'
+                      : importSteps[step.key].status === 'active'
+                        ? 'i-lucide-loader-circle'
+                        : 'i-lucide-circle-dashed'"
+                    class="size-4 shrink-0"
+                    :class="importSteps[step.key].status === 'done'
+                      ? 'text-success'
+                      : importSteps[step.key].status === 'active'
+                        ? 'text-primary animate-spin'
+                        : 'text-dimmed'"
+                  />
+                  <span :class="importSteps[step.key].status === 'pending' ? 'text-dimmed' : 'text-highlighted'">
+                    {{ importSteps[step.key].status === 'done' ? step.done : step.doing }}
+                  </span>
+                  <span
+                    v-if="importSteps[step.key].status === 'active' && (importSteps[step.key].total ?? 0) > 0"
+                    class="ml-auto text-xs text-muted tabular-nums"
+                  >
+                    {{ importSteps[step.key].current ?? 0 }} / {{ importSteps[step.key].total }}
+                  </span>
+                </li>
+              </ul>
+
+              <!-- A real failure still needs its exact reason surfaced. -->
+              <p v-if="importPhase === 'error' && igMsg" class="text-xs text-warning mt-4">
+                {{ igMsg }}
+              </p>
             </div>
-            <UAlert
-              v-else-if="igMsg"
-              :color="igError ? 'warning' : 'info'" variant="soft"
-              :icon="igError ? 'i-lucide-triangle-alert' : 'i-lucide-info'"
-              :description="igMsg"
-            />
-            <p class="text-xs text-dimmed">
-              Imported items land as drafts under Products — set prices and publish there. Hit “Next” to keep going.
-            </p>
           </template>
         </div>
       </UCard>

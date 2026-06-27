@@ -18,8 +18,8 @@ const { data, refresh } = await useFetch(`/api/admin/stores/${storeId}/products`
 const products = computed(() => data.value?.products ?? [])
 
 async function togglePublish(p: AdminProduct) {
-  const status = p.status === 'published' ? 'draft' : 'published'
-  await $fetch(`/api/admin/stores/${storeId}/products/${p.id}`, { method: 'PATCH', body: { status } })
+  const published = !p.published
+  await $fetch(`/api/admin/stores/${storeId}/products/${p.id}`, { method: 'PATCH', body: { published } })
   await refresh()
 }
 async function remove(p: AdminProduct) {
@@ -78,10 +78,9 @@ async function remove(p: AdminProduct) {
             <td class="text-default">{{ formatPrice(p.price_minor, p.currency) }}</td>
             <td>
               <UBadge
-                :color="p.status === 'published' ? 'success' : 'neutral'"
+                :color="p.published ? 'success' : 'neutral'"
                 variant="subtle"
-                class="capitalize"
-                :label="p.status"
+                :label="p.published ? 'Published' : 'Hidden'"
               />
             </td>
             <td class="text-right whitespace-nowrap">
@@ -90,8 +89,8 @@ async function remove(p: AdminProduct) {
                   size="xs"
                   color="neutral"
                   variant="ghost"
-                  :icon="p.status === 'published' ? 'i-lucide-eye-off' : 'i-lucide-check'"
-                  :label="p.status === 'published' ? 'Unpublish' : 'Publish'"
+                  :icon="p.published ? 'i-lucide-eye-off' : 'i-lucide-check'"
+                  :label="p.published ? 'Unpublish' : 'Publish'"
                   @click="togglePublish(p)"
                 />
                 <UButton size="xs" color="error" variant="ghost" icon="i-lucide-trash-2" label="Delete" @click="remove(p)" />

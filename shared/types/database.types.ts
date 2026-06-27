@@ -878,7 +878,7 @@ export type Database = {
           ig_media_id: string
           ig_permalink: string | null
           ig_posted_at: string | null
-          product_id: string
+          product_id: string | null
           product_image_id: string | null
           store_id: string
         }
@@ -889,7 +889,7 @@ export type Database = {
           ig_media_id: string
           ig_permalink?: string | null
           ig_posted_at?: string | null
-          product_id: string
+          product_id?: string | null
           product_image_id?: string | null
           store_id: string
         }
@@ -900,7 +900,7 @@ export type Database = {
           ig_media_id?: string
           ig_permalink?: string | null
           ig_posted_at?: string | null
-          product_id?: string
+          product_id?: string | null
           product_image_id?: string | null
           store_id?: string
         }
@@ -1050,9 +1050,9 @@ export type Database = {
           needs_review: boolean
           position: number
           price_minor: number
+          published: boolean
           slug: string
           source: string
-          status: Database["public"]["Enums"]["product_status"]
           stock: number | null
           store_id: string
           tags: string[]
@@ -1072,9 +1072,9 @@ export type Database = {
           needs_review?: boolean
           position?: number
           price_minor?: number
+          published?: boolean
           slug: string
           source?: string
-          status?: Database["public"]["Enums"]["product_status"]
           stock?: number | null
           store_id: string
           tags?: string[]
@@ -1094,9 +1094,9 @@ export type Database = {
           needs_review?: boolean
           position?: number
           price_minor?: number
+          published?: boolean
           slug?: string
           source?: string
-          status?: Database["public"]["Enums"]["product_status"]
           stock?: number | null
           store_id?: string
           tags?: string[]
@@ -1502,7 +1502,6 @@ export type Database = {
         | "partially_refunded"
         | "refunded"
         | "failed"
-      product_status: "draft" | "published" | "archived"
       store_status: "pending" | "active" | "suspended" | "archived"
     }
     CompositeTypes: {
@@ -1660,7 +1659,6 @@ export const Constants = {
         "refunded",
         "failed",
       ],
-      product_status: ["draft", "published", "archived"],
       store_status: ["pending", "active", "suspended", "archived"],
     },
   },

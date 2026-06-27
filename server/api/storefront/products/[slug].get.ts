@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
     .from('products')
     .select('id, title, slug, description, price_minor, currency, image_url')
     .eq('store_id', store.id)
-    .eq('status', 'published')
+    .eq('published', true)
     .eq('slug', slug)
     .maybeSingle()
 

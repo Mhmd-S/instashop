@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     .from('products')
     .select('id')
     .eq('store_id', store.id)
-    .eq('status', 'published')
+    .eq('published', true)
   const pubIds = ((pub ?? []) as { id: string }[]).map((p) => p.id)
   if (!pubIds.length) return { categories: [] as StorefrontCategory[] }
 

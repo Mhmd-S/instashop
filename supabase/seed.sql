@@ -44,10 +44,10 @@ values (
 ) on conflict (id) do nothing;
 
 -- ---- Products (published, visible on the storefront) ----
-insert into public.products (store_id, source, status, title, slug, description, price_minor, currency, position)
+insert into public.products (store_id, source, published, title, slug, description, price_minor, currency, position)
 values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','manual','published','Hand-thrown Mug','hand-thrown-mug','A cozy ceramic mug, glazed by hand.',2400,'USD',0),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','manual','published','Linen Apron','linen-apron','Natural stonewashed linen, one size.',4200,'USD',1)
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','manual',true,'Hand-thrown Mug','hand-thrown-mug','A cozy ceramic mug, glazed by hand.',2400,'USD',0),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','manual',true,'Linen Apron','linen-apron','Natural stonewashed linen, one size.',4200,'USD',1)
 on conflict (store_id, slug) do nothing;
 
 -- ---- Active theme (version 1) ----

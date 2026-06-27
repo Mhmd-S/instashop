@@ -38,6 +38,17 @@ export interface ImportResult {
   usedAi: boolean
 }
 
+// Coarse, honest progress for the onboarding UI: one entry per real stage of the
+// import, reported as it actually happens (never on a guessed timer). `current`/
+// `total` count the items processed within a stage so the UI can show "12 / 30".
+export interface ImportProgress {
+  step: 'fetch' | 'analyze' | 'products' | 'branding'
+  status: 'active' | 'done'
+  current?: number
+  total?: number
+}
+export type ProgressFn = (p: ImportProgress) => void
+
 // --- helpers ------------------------------------------------------------------
 
 async function loadMaterializedIds(admin: SupabaseClient, storeId: string): Promise<Set<string>> {
@@ -108,7 +119,11 @@ async function loadAnalysisCache(admin: SupabaseClient, storeId: string): Promis
 // Batched Stage-1 analysis over uncached posts: classify + group (via product_key)
 // + write copy in ONE text-only Gemini call per chunk (captions carry the product
 // facts). Posts the model omits or a failed call fall back to the per-post heuristic.
-async function analyzeFresh(storeName: string, posts: IgMedia[]): Promise<Map<string, AnalyzedPost>> {
+async function analyzeFresh(
+  storeName: string,
+  posts: IgMedia[],
+  onBatch?: (count: number) => void,
+): Promise<Map<string, AnalyzedPost>> {
   const out = new Map<string, AnalyzedPost>()
   for (let start = 0; start < posts.length; start += ANALYZE_BATCH_SIZE) {
     const chunk = posts.slice(start, start + ANALYZE_BATCH_SIZE)
@@ -118,6 +133,7 @@ async function analyzeFresh(storeName: string, posts: IgMedia[]): Promise<Map<st
       const m = chunk[i]!
       out.set(m.id, res?.get(i) ?? heuristicAnalysis(m))
     }
+    onBatch?.(chunk.length)
   }
   return out
 }
@@ -175,7 +191,6 @@ async function loadExistingProductKeys(
     .select('id, locked_by_seller')
     .eq('store_id', storeId)
     .eq('source', 'instagram')
-    .neq('status', 'archived')
   const lockedById = new Map<string, boolean>()
   for (const p of (prods ?? []) as { id: string; locked_by_seller: boolean }[]) lockedById.set(p.id, p.locked_by_seller)
 
@@ -219,7 +234,7 @@ async function createProduct(
     .insert({
       store_id: storeId,
       source: 'instagram',
-      status: 'draft',
+      published: false,
       title,
       slug,
       description: o.description ? o.description.slice(0, 5000) : null,
@@ -512,7 +527,7 @@ async function refreshProfile(admin: SupabaseClient, storeId: string, token: str
 
 // --- orchestrator -------------------------------------------------------------
 
-export async function runImport(event: H3Event, storeId: string): Promise<ImportResult> {
+export async function runImport(event: H3Event, storeId: string, onProgress?: ProgressFn): Promise<ImportResult> {
   const admin = supabaseAdmin(event)
 
   const { data: acct } = await admin
@@ -529,14 +544,21 @@ export async function runImport(event: H3Event, storeId: string): Promise<Import
   // Instagram profile picture (a logo change on IG flows through here).
   await refreshProfile(admin, storeId, token)
 
+  onProgress?.({ step: 'fetch', status: 'active' })
   const media = await getMedia(token, { maxItems: MAX_ITEMS, maxPages: 4, pageSize: 50 })
-  return materializeImport(event, storeId, media)
+  onProgress?.({ step: 'fetch', status: 'done', current: media.length, total: media.length })
+  return materializeImport(event, storeId, media, onProgress)
 }
 
 // Run analyze -> cluster -> materialize over an explicit media list. Shared by the
 // live sync (runImport) and the dev fixture importer, so fixtures exercise the
 // exact same code path as a real Instagram import.
-export async function materializeImport(event: H3Event, storeId: string, media: IgMedia[]): Promise<ImportResult> {
+export async function materializeImport(
+  event: H3Event,
+  storeId: string,
+  media: IgMedia[],
+  onProgress?: ProgressFn,
+): Promise<ImportResult> {
   const admin = supabaseAdmin(event)
   const cfg = useRuntimeConfig()
   const usedAi = !!cfg.geminiApiKey
@@ -559,14 +581,21 @@ export async function materializeImport(event: H3Event, storeId: string, media: 
     if (a) analyses.set(m.id, a)
     else toAnalyze.push(m)
   }
+  // Cached posts count as already understood; fresh ones tick up per Gemini batch.
+  let analyzed = newPosts.length - toAnalyze.length
+  onProgress?.({ step: 'analyze', status: 'active', current: analyzed, total: newPosts.length })
   if (toAnalyze.length) {
-    const fresh = await analyzeFresh(storeName, toAnalyze)
+    const fresh = await analyzeFresh(storeName, toAnalyze, (count) => {
+      analyzed += count
+      onProgress?.({ step: 'analyze', status: 'active', current: analyzed, total: newPosts.length })
+    })
     for (const m of toAnalyze) {
       const a = fresh.get(m.id) ?? heuristicAnalysis(m)
       analyses.set(m.id, a)
       await persistAnalysis(admin, storeId, m, a, currency, model)
     }
   }
+  onProgress?.({ step: 'analyze', status: 'done', current: newPosts.length, total: newPosts.length })
 
   // Trust the model's is_product classification for the product/branding split;
   // confidence only gates the needs-review flag below.
@@ -597,6 +626,10 @@ export async function materializeImport(event: H3Event, storeId: string, media: 
   let imported = 0
   let merged = 0
   let needsReview = 0
+  // Building products (fetching, dedup-hashing, re-hosting each post's images) is the
+  // slow stage — report one tick per product group so the bar visibly advances.
+  onProgress?.({ step: 'products', status: 'active', current: 0, total: groups.length })
+  let groupsDone = 0
   for (const g of groups) {
     const memberPosts = g.members
     if (!memberPosts.length) continue
@@ -637,13 +670,20 @@ export async function materializeImport(event: H3Event, storeId: string, media: 
     const cats = new Set<string>()
     for (const m of memberPosts) for (const c of analyses.get(m.id)!.suggestedCategories) cats.add(c)
     if (cats.size) await assignCategories(admin, storeId, productId, [...cats])
+
+    groupsDone++
+    onProgress?.({ step: 'products', status: 'active', current: groupsDone, total: groups.length })
   }
+  onProgress?.({ step: 'products', status: 'done', current: groups.length, total: groups.length })
 
   let branding = 0
+  onProgress?.({ step: 'branding', status: 'active', current: 0, total: nonProductPosts.length })
   for (const m of nonProductPosts) {
     await createBrandingAsset(admin, storeId, m, analyses.get(m.id)!)
     branding++
+    onProgress?.({ step: 'branding', status: 'active', current: branding, total: nonProductPosts.length })
   }
+  onProgress?.({ step: 'branding', status: 'done', current: nonProductPosts.length, total: nonProductPosts.length })
 
   await admin
     .from('ig_accounts')

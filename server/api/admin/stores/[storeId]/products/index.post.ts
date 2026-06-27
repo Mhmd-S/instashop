@@ -8,7 +8,7 @@ const Body = z.object({
   description: z.string().trim().max(5000).nullable().optional(),
   price_minor: z.number().int().min(0).max(100_000_000),
   stock: z.number().int().min(0).nullable().optional(),
-  status: z.enum(['draft', 'published', 'archived']).default('draft'),
+  published: z.boolean().default(false),
 })
 
 export default defineEventHandler(async (event) => {
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     .insert({
       store_id: storeId,
       source: 'manual',
-      status: body.status,
+      published: body.published,
       title: body.title,
       slug,
       description: body.description ?? null,

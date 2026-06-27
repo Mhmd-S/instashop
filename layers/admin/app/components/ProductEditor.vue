@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProductDraft, ProductStatus } from '~~/shared/types/product'
+import type { ProductDraft } from '~~/shared/types/product'
 
 // Self-contained product editor. Rendered on the standalone editor page and inline
 // (per row) in the wizard's products review. Non-blocking fetch + graceful
@@ -42,7 +42,7 @@ const categoryOptions = computed(() => (catData.value?.categories ?? []).map((c)
 const title = ref('')
 const price = ref('')
 const description = ref('')
-const status = ref<ProductStatus>('draft')
+const published = ref(false)
 const stock = ref('')
 const categoryIds = ref<string[]>([])
 
@@ -59,7 +59,7 @@ watchEffect(() => {
   title.value = d?.title ?? p.title
   price.value = ((d?.price_minor ?? p.price_minor) / 100).toString()
   description.value = (d ? d.description : p.description) ?? ''
-  status.value = d?.status ?? p.status
+  published.value = d?.published ?? p.published
   const stockSrc = d ? d.stock : p.stock
   stock.value = stockSrc == null ? '' : String(stockSrc)
   categoryIds.value = [...(d?.category_ids ?? p.category_ids ?? [])]
@@ -76,7 +76,7 @@ const draftValue = computed<ProductDraft>(() => ({
   title: title.value,
   description: description.value || null,
   price_minor: Math.round(Number.parseFloat(price.value || '0') * 100),
-  status: status.value,
+  published: published.value,
   stock: stock.value === '' ? null : Number.parseInt(stock.value, 10),
   category_ids: categoryIds.value,
 }))
@@ -88,7 +88,7 @@ const dirty = computed(() => {
     d.title !== p.title ||
     d.price_minor !== p.price_minor ||
     d.description !== (p.description ?? null) ||
-    d.status !== p.status ||
+    d.published !== p.published ||
     d.stock !== (p.stock ?? null) ||
     !sameIds(d.category_ids, p.category_ids ?? [])
   )
@@ -111,7 +111,7 @@ async function save(): Promise<boolean> {
         title: title.value,
         description: description.value || null,
         price_minor: Math.round(Number.parseFloat(price.value || '0') * 100),
-        status: status.value,
+        published: published.value,
         stock: stock.value === '' ? null : Number.parseInt(stock.value, 10),
         category_ids: categoryIds.value,
       },
@@ -331,15 +331,10 @@ async function remove() {
         <UFormField label="Description" name="description">
           <UTextarea v-model="description" :rows="4" class="w-full" />
         </UFormField>
-        <UFormField label="Status" name="status">
-          <USelect
-            v-model="status"
-            :items="[
-              { label: 'Draft', value: 'draft' },
-              { label: 'Published', value: 'published' },
-              { label: 'Archived', value: 'archived' },
-            ]"
-            class="w-full"
+        <UFormField label="Visibility" name="published">
+          <USwitch
+            v-model="published"
+            :label="published ? 'Published — live on your storefront' : 'Hidden — not visible to shoppers'"
           />
         </UFormField>
         <UFormField label="Categories" name="categories">
@@ -351,14 +346,11 @@ async function remove() {
             placeholder="Assign categories…"
             class="w-full"
           />
-          <template #help>
-            <ULink :to="`/stores/${storeId}/categories`" class="text-primary">Manage categories</ULink>
-          </template>
         </UFormField>
 
         <UAlert v-if="error" color="error" variant="soft" :title="error" icon="i-lucide-circle-alert" />
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center justify-end *:gap-3">
           <UButton v-if="!embedded" type="submit" :loading="saving" :disabled="saving" icon="i-lucide-check" :label="saving ? 'Saving…' : 'Save'" />
           <UButton type="button" color="error" variant="ghost" icon="i-lucide-trash-2" label="Delete" @click="remove" />
         </div>

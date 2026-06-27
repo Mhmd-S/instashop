@@ -38,12 +38,12 @@ function onEdit(id: string, draft: ProductDraft | null) {
 const rows = computed(() =>
   products.value.map((p) => {
     const d = drafts.value[p.id]
-    return d ? { ...p, title: d.title, price_minor: d.price_minor, status: d.status } : p
+    return d ? { ...p, title: d.title, price_minor: d.price_minor, published: d.published } : p
   }),
 )
 
-// Take every priced draft live in one request. Unpriced drafts stay draft so we
-// never publish a $0 listing; the seller prices them later.
+// Take every priced unpublished product live in one request. Unpriced ones stay
+// hidden so we never publish a $0 listing; the seller prices them later.
 async function publishDrafts(): Promise<boolean> {
   err.value = null
   try {
@@ -83,12 +83,12 @@ const err = ref<string | null>(null)
 async function quickPublish(p: AdminProduct) {
   busyId.value = p.id
   err.value = null
-  const status = p.status === 'published' ? 'draft' : 'published'
+  const published = !p.published
   try {
-    await $fetch(`/api/admin/stores/${props.storeId}/products/${p.id}`, { method: 'PATCH', body: { status } })
+    await $fetch(`/api/admin/stores/${props.storeId}/products/${p.id}`, { method: 'PATCH', body: { published } })
     // Keep an in-progress draft for this row in sync so the Next save won't revert it.
     const d = drafts.value[p.id]
-    if (d) onEdit(p.id, { ...d, status })
+    if (d) onEdit(p.id, { ...d, published })
     await refresh()
   } catch (e) {
     err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not update product'
@@ -120,7 +120,7 @@ async function addProduct() {
   try {
     const { product } = await $fetch(`/api/admin/stores/${props.storeId}/products`, {
       method: 'POST',
-      body: { title: 'New product', description: null, price_minor: 0, status: 'draft' },
+      body: { title: 'New product', description: null, price_minor: 0, published: false },
     })
     await refresh()
     expanded.value = product.id
@@ -178,12 +178,12 @@ function onDeleted() {
               </div>
             </button>
             <UBadge v-if="p.needs_review" color="warning" variant="subtle" size="xs" label="Review" />
-            <UBadge :color="p.status === 'published' ? 'success' : 'neutral'" variant="subtle" size="xs" class="capitalize" :label="p.status" />
+            <UBadge :color="p.published ? 'success' : 'neutral'" variant="subtle" size="xs" :label="p.published ? 'Published' : 'Hidden'" />
             <UButton
               v-if="expanded !== p.id"
               size="xs" color="neutral" variant="ghost"
-              :icon="p.status === 'published' ? 'i-lucide-eye-off' : 'i-lucide-check'"
-              :label="p.status === 'published' ? 'Unpublish' : 'Publish'"
+              :icon="p.published ? 'i-lucide-eye-off' : 'i-lucide-check'"
+              :label="p.published ? 'Unpublish' : 'Publish'"
               :loading="busyId === p.id" :disabled="busyId === p.id"
               @click="quickPublish(p)"
             />

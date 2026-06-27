@@ -1,4 +1,3 @@
-export type ProductStatus = 'draft' | 'published' | 'archived'
 export type ProductSource = 'instagram' | 'manual'
 
 // One image in a product's gallery (admin view).
@@ -25,7 +24,7 @@ export interface AdminProduct {
   id: string
   store_id: string
   source: ProductSource
-  status: ProductStatus
+  published: boolean
   title: string
   slug: string
   description: string | null
@@ -49,7 +48,7 @@ export interface ProductDraft {
   title: string
   description: string | null
   price_minor: number
-  status: ProductStatus
+  published: boolean
   stock: number | null
   category_ids: string[]
 }
