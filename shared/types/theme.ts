@@ -1,3 +1,10 @@
+import type { SectionId, SectionMap } from './template'
+import { DEFAULT_SECTION_ORDER } from './template'
+
+// The storefront section catalog + composition schema lives in ./template.ts (the
+// "Atelier" template) — import ALLOWED_SECTION from there. Runtime dependency is
+// one-directional: theme → template (template references only this module's types).
+
 export const THEME_SCHEMA_VERSION = 1 as const
 
 // Curated allowlists — the vision model may ONLY pick from these (anti-injection, Blueprint §6).
@@ -23,8 +30,6 @@ export const ALLOWED_LAYOUT = ['catalog', 'lookbook', 'editorial', 'boutique'] a
 export const ALLOWED_HERO = ['split', 'full-bleed', 'centered', 'offset'] as const
 export const ALLOWED_PRODUCT_CARD = ['portrait', 'square', 'editorial', 'tile'] as const
 export const ALLOWED_CARD_HOVER = ['lift', 'zoom', 'none'] as const
-export const ALLOWED_SECTION = ['hero', 'categories', 'featured', 'products'] as const
-
 export type Hex = string // validated against /^#[0-9a-fA-F]{6}$/ server-side (Zod)
 
 export type NeutralScale = Record<'50' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | '950', Hex>
@@ -37,9 +42,14 @@ export interface ArtDirection {
   hero: typeof ALLOWED_HERO[number]
   productCard: typeof ALLOWED_PRODUCT_CARD[number]
   cardHover: typeof ALLOWED_CARD_HOVER[number]
-  // Which sections render and in what order. Validated to a deduped subset of
-  // ALLOWED_SECTION; the renderer always pins 'hero' first regardless.
-  sectionOrder: Array<typeof ALLOWED_SECTION[number]>
+  // Which sections render and in what order (the widened "Atelier" catalog). Validated
+  // to a deduped subset of ALLOWED_SECTION; the renderer always pins 'hero' first and
+  // guarantees 'products' present (normalizeSectionOrder).
+  sectionOrder: SectionId[]
+  // Per-section enum config, keyed by section id (config.id === key). Materialized for
+  // every id in sectionOrder by resolveSections; optional on the type so legacy DB rows
+  // (which predate it) and the fallback theme stay valid before materialization.
+  sections?: SectionMap
 }
 
 export interface DesignTokens {
@@ -115,7 +125,8 @@ export const FALLBACK_THEME: DesignTokens = {
     hero: 'split',
     productCard: 'square',
     cardHover: 'lift',
-    sectionOrder: ['hero', 'categories', 'products'],
+    sectionOrder: [...DEFAULT_SECTION_ORDER],
+    sections: {},
   },
   keywords: [],
 }

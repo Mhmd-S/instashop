@@ -59,7 +59,7 @@ async function submit() {
           icon="i-lucide-plus"
           :label="loading ? 'Creating…' : 'Create product'"
         />
-        <p class="text-xs text-muted">You'll add a photo on the next screen. New products start hidden — publish when ready.</p>
+        <p class="text-xs text-muted">You'll add a photo on the next screen. New products start hidden — make them visible when ready.</p>
       </form>
     </UCard>
   </div>

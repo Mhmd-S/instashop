@@ -10,9 +10,9 @@ import {
   ALLOWED_MOOD,
   ALLOWED_PRODUCT_CARD,
   ALLOWED_RADIUS,
-  ALLOWED_SECTION,
   FALLBACK_THEME,
 } from '~~/shared/types/theme'
+import { resolveSections } from '~~/shared/types/template'
 import { bestOn, fixOn } from './contrast'
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -29,28 +29,14 @@ function pick<T extends readonly string[]>(v: unknown, allowed: T, fallback: T[n
 
 const NEUTRAL_KEYS = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'] as const
 
-// Clamp the art-direction block to enums-only, exactly like fonts/mood. sectionOrder
-// is filtered to the allowlist + deduped; 'hero' is guaranteed present and first so a
-// model that omits it can never produce a heroless page.
+// Clamp the art-direction block to enums-only, exactly like fonts/mood. The section
+// composition (order + per-section config) goes through resolveSections — the shared
+// choke-point that remaps legacy ids, drops unknowns, dedupes, force-pins 'hero'
+// first, guarantees 'products' present, and enum-clamps every section config (H6).
 function repairArtDirection(raw: unknown): ArtDirection {
   const a = asObj(raw)
   const fb = FALLBACK_THEME.artDirection
-  const seen = new Set<ArtDirection['sectionOrder'][number]>()
-  const order: ArtDirection['sectionOrder'] = ['hero']
-  seen.add('hero')
-  if (Array.isArray(a.sectionOrder)) {
-    for (const s of a.sectionOrder) {
-      if (typeof s === 'string' && (ALLOWED_SECTION as readonly string[]).includes(s) && !seen.has(s as ArtDirection['sectionOrder'][number])) {
-        seen.add(s as ArtDirection['sectionOrder'][number])
-        order.push(s as ArtDirection['sectionOrder'][number])
-      }
-    }
-  }
-  // Only 'hero' was forced → no real composition given; fall back to the default set.
-  let sectionOrder = order.length > 1 ? order : [...fb.sectionOrder]
-  // A storefront must always show its products — force the grid in if the model
-  // (or an edit) dropped it, so a shop can never render with no buyable surface.
-  if (!sectionOrder.includes('products')) sectionOrder = [...sectionOrder, 'products']
+  const { sectionOrder, sections } = resolveSections(a.sectionOrder, a.sections)
 
   return {
     layout: pick(a.layout, ALLOWED_LAYOUT, fb.layout),
@@ -58,6 +44,7 @@ function repairArtDirection(raw: unknown): ArtDirection {
     productCard: pick(a.productCard, ALLOWED_PRODUCT_CARD, fb.productCard),
     cardHover: pick(a.cardHover, ALLOWED_CARD_HOVER, fb.cardHover),
     sectionOrder,
+    sections,
   }
 }
 

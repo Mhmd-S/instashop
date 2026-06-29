@@ -1,4 +1,6 @@
 import type { ArtDirection } from '~~/shared/types/theme'
+import type { HeroSection, SectionId, SectionMap } from '~~/shared/types/template'
+import { DEFAULT_SECTION_ORDER, resolveSections } from '~~/shared/types/template'
 import { pickVibe, VIBE_PRESETS, type StoreVibe } from './useStoreMood'
 
 // Translates the store's structural `artDirection` enums (chosen by the art-direction
@@ -36,7 +38,10 @@ export interface StoreArtDirection {
   layout: ArtDirection['layout']
   vibe: StoreVibe
   expressive: boolean
-  sections: ArtDirection['sectionOrder']
+  // The ordered section ids the storefront renders (the widened "Atelier" catalog).
+  sectionOrder: SectionId[]
+  // Per-section enum config, materialized for every id in sectionOrder.
+  sections: SectionMap
   hero: HeroPresentation
   card: CardPresentation
   eyebrow: { label: string; rule: boolean }
@@ -91,16 +96,17 @@ const CARD_VARIANT: Record<ArtDirection['productCard'], { aspect: string; framed
 }
 
 // Mood → default artDirection, used only for themes saved before artDirection existed.
+// sectionOrder uses Phase-1 sections only so the page always renders complete.
 function defaultsFromVibe(vibe: StoreVibe): ArtDirection {
   switch (vibe) {
     case 'luxury':
-      return { layout: 'editorial', hero: 'centered', productCard: 'portrait', cardHover: 'zoom', sectionOrder: ['hero', 'categories', 'products'] }
+      return { layout: 'editorial', hero: 'centered', productCard: 'portrait', cardHover: 'zoom', sectionOrder: ['hero', 'shopByCategory', 'featuredRail', 'products', 'newsletter'] }
     case 'bold':
-      return { layout: 'catalog', hero: 'offset', productCard: 'square', cardHover: 'lift', sectionOrder: ['hero', 'categories', 'products'] }
+      return { layout: 'catalog', hero: 'offset', productCard: 'square', cardHover: 'lift', sectionOrder: ['hero', 'marquee', 'featuredRail', 'shopByCategory', 'products', 'newsletter'] }
     case 'minimal':
-      return { layout: 'catalog', hero: 'split', productCard: 'square', cardHover: 'none', sectionOrder: ['hero', 'categories', 'products'] }
+      return { layout: 'catalog', hero: 'split', productCard: 'square', cardHover: 'none', sectionOrder: ['hero', 'shopByCategory', 'products', 'newsletter'] }
     default:
-      return { layout: 'catalog', hero: 'split', productCard: 'square', cardHover: 'lift', sectionOrder: ['hero', 'categories', 'products'] }
+      return { layout: 'catalog', hero: 'split', productCard: 'square', cardHover: 'lift', sectionOrder: [...DEFAULT_SECTION_ORDER] }
   }
 }
 
@@ -110,15 +116,23 @@ export function useStoreArtDirection() {
     const vibe = pickVibe(state.value.mood)
     const preset = VIBE_PRESETS[vibe]
     const ad = state.value.artDirection ?? defaultsFromVibe(vibe)
-    const heroCfg = heroVariantClasses(ad.hero)
+    // Resolve the composition the same way the server choke-point does (remap legacy
+    // ids, dedupe, hero-first, products-present, clamp + materialize per-section config)
+    // so even a theme persisted before `sections` existed renders the full catalog.
+    const { sectionOrder, sections } = resolveSections(ad.sectionOrder, ad.sections)
+    // The hero composition is the per-section config's choice, falling back to the
+    // legacy global `artDirection.hero`.
+    const heroComposition = (sections.hero as HeroSection | undefined)?.composition ?? ad.hero
+    const heroCfg = heroVariantClasses(heroComposition)
     const cardCfg = CARD_VARIANT[ad.productCard]
     return {
       layout: ad.layout,
       vibe,
       expressive: preset.expressive,
-      sections: ad.sectionOrder?.length ? ad.sectionOrder : defaultsFromVibe(vibe).sectionOrder,
+      sectionOrder,
+      sections,
       hero: {
-        variant: ad.hero,
+        variant: heroComposition,
         section: LAYOUT_RHYTHM[ad.layout],
         align: heroCfg.align,
         eyebrow: preset.hero.eyebrow,

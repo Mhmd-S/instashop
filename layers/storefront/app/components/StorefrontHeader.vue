@@ -12,43 +12,35 @@ function isActive(slug: string) {
 </script>
 
 <template>
-  <header class="sticky top-0 z-20 border-b border-default bg-default/85 backdrop-blur supports-[backdrop-filter]:bg-default/75">
-    <UContainer class="flex h-16 items-center justify-between gap-4">
-      <ULink to="/" class="min-w-0 rounded-[var(--ui-radius)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" :aria-label="store?.name ?? 'Store'">
+  <header class="sticky top-0 z-20 border-b border-(--t-rule) bg-(--ui-bg)/80 backdrop-blur supports-[backdrop-filter]:bg-(--ui-bg)/70">
+    <UContainer class="flex h-[4.25rem] items-center justify-between gap-6">
+      <ULink to="/" class="min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-(--ui-text)" :aria-label="store?.name ?? 'Store'">
         <StorefrontBrand />
       </ULink>
-      <UButton to="/cart" icon="i-lucide-shopping-cart" color="neutral" variant="ghost" aria-label="Cart">
-        <span class="hidden sm:inline">Cart</span>
-        <template #trailing>
-          <ClientOnly>
-            <UBadge v-if="cart.count" :label="String(cart.count)" color="primary" size="sm" class="rounded-full" />
-          </ClientOnly>
-        </template>
-      </UButton>
+      <ULink
+        to="/cart"
+        class="group shrink-0 text-[0.78rem] font-medium uppercase tracking-[0.18em] text-highlighted focus:outline-none focus-visible:ring-1 focus-visible:ring-(--ui-text)"
+      >
+        Bag<ClientOnly><span v-if="cart.count" class="text-muted"> ({{ cart.count }})</span></ClientOnly>
+      </ULink>
     </UContainer>
 
-    <nav v-if="categories.length" class="border-t border-default/60">
+    <nav v-if="categories.length" class="border-t border-(--t-rule)">
       <UContainer
-        class="flex items-center gap-1 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        class="flex items-center gap-7 overflow-x-auto py-2.5 text-[0.7rem] font-medium uppercase tracking-[0.18em] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <UButton
+        <ULink
           to="/"
-          label="All"
-          size="xs"
-          class="shrink-0"
-          :color="onHome ? 'primary' : 'neutral'"
-          :variant="onHome ? 'soft' : 'ghost'"
-        />
-        <UButton
+          class="shrink-0 border-b border-transparent pb-0.5 transition-colors"
+          :class="onHome ? 'border-(--ui-text) text-highlighted' : 'text-muted hover:text-highlighted'"
+        >All</ULink>
+        <ULink
           v-for="c in categories"
           :key="c.slug"
           :to="`/categories/${c.slug}`"
-          :label="c.name"
-          size="xs"
-          class="shrink-0"
-          :color="isActive(c.slug) ? 'primary' : 'neutral'"
-          :variant="isActive(c.slug) ? 'soft' : 'ghost'"
-        />
+          class="shrink-0 whitespace-nowrap border-b border-transparent pb-0.5 transition-colors"
+          :class="isActive(c.slug) ? 'border-(--ui-text) text-highlighted' : 'text-muted hover:text-highlighted'"
+        >{{ c.name }}</ULink>
       </UContainer>
     </nav>
   </header>

@@ -12,6 +12,16 @@ const { data, refresh, pending } = useFetch(`/api/admin/stores/${props.storeId}/
   getCachedData: () => undefined,
 })
 const products = computed(() => data.value?.products ?? [])
+
+// The CategoryManager above renders per-category product-count badges from the shared
+// store-categories list. Deleting a product or changing its categories shifts those
+// counts, so invalidate that list alongside the products on every such mutation —
+// otherwise the badges stay stale until a full page reload. Refresh it by key (not by
+// instantiating useStoreCategories here) so we don't register a second useFetch on the
+// same key, which would clobber CategoryManager's data.
+async function refreshAll() {
+  await Promise.all([refresh(), refreshNuxtData(storeCategoriesKey(props.storeId))])
+}
 // The store has a single currency, mirrored onto every product. Surface it from the
 // (refreshed-on-change) list so an open editor's price label tracks currency changes
 // without having to refetch the product itself.
@@ -106,7 +116,7 @@ async function quickDelete(p: AdminProduct) {
     await $fetch(`/api/admin/stores/${props.storeId}/products/${p.id}`, { method: 'DELETE' })
     if (expanded.value === p.id) expanded.value = null
     onEdit(p.id, null) // drop any pending draft for the gone product
-    await refresh()
+    await refreshAll()
   } catch (e) {
     err.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not delete product'
   } finally {
@@ -135,7 +145,7 @@ function onDeleted() {
   const id = expanded.value
   expanded.value = null
   if (id) onEdit(id, null) // drop any pending draft for the gone product
-  refresh()
+  refreshAll()
 }
 </script>
 
@@ -178,14 +188,14 @@ function onDeleted() {
               </div>
             </button>
             <UBadge v-if="p.needs_review" color="warning" variant="subtle" size="xs" label="Review" />
-            <UBadge :color="p.published ? 'success' : 'neutral'" variant="subtle" size="xs" :label="p.published ? 'Published' : 'Hidden'" />
-            <UButton
+            <USwitch
               v-if="expanded !== p.id"
-              size="xs" color="neutral" variant="ghost"
-              :icon="p.published ? 'i-lucide-eye-off' : 'i-lucide-check'"
-              :label="p.published ? 'Unpublish' : 'Publish'"
-              :loading="busyId === p.id" :disabled="busyId === p.id"
-              @click="quickPublish(p)"
+              :model-value="p.published"
+              :label="p.published ? 'Visible' : 'Hidden'"
+              :loading="busyId === p.id"
+              :disabled="busyId === p.id"
+              size="sm"
+              @update:model-value="quickPublish(p)"
             />
             <UButton
               v-if="expanded !== p.id"
@@ -202,7 +212,7 @@ function onDeleted() {
               :draft="drafts[p.id] ?? null"
               embedded
               @edit="(d) => onEdit(p.id, d)"
-              @changed="refresh"
+              @changed="refreshAll"
               @deleted="onDeleted"
             />
           </div>

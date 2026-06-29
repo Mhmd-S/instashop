@@ -22,23 +22,26 @@ const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-US', { year: '
     />
 
     <UContainer class="py-16 sm:py-20">
-      <div class="mx-auto max-w-3xl divide-y divide-default">
-        <article v-for="post in posts" :key="post.slug" class="py-8 first:pt-0">
-          <NuxtLink :to="`/blog/${post.slug}`" class="group block">
-            <div class="flex items-center gap-3 text-xs text-dimmed">
+      <div class="mx-auto max-w-3xl space-y-6">
+        <Reveal v-for="(post, i) in posts" :key="post.slug" :delay="i * 70">
+          <NuxtLink
+            :to="`/blog/${post.slug}`"
+            class="group block rounded-card border border-default bg-white p-6 shadow-card transition duration-300 ease-stripe hover:-translate-y-1 hover:shadow-float sm:p-7"
+          >
+            <div class="flex items-center gap-3 text-xs text-ink-subtle">
               <UBadge :label="post.tag" color="primary" variant="subtle" size="sm" />
               <time :datetime="post.date">{{ fmt(post.date) }}</time>
             </div>
-            <h2 class="mt-3 text-2xl font-semibold tracking-tight text-highlighted group-hover:text-primary">
+            <h2 class="mt-3 text-h3 font-semibold text-ink group-hover:text-primary">
               {{ post.title }}
             </h2>
-            <p class="mt-2 text-muted">{{ post.excerpt }}</p>
-            <span class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
+            <p class="mt-2 text-ink-muted leading-relaxed">{{ post.excerpt }}</p>
+            <span class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
               Read more
               <UIcon name="i-lucide-arrow-right" class="size-4 transition group-hover:translate-x-0.5" />
             </span>
           </NuxtLink>
-        </article>
+        </Reveal>
       </div>
     </UContainer>
   </MarketingShell>

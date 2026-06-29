@@ -3,7 +3,9 @@
 // `text-primary` so it tracks the app's primary colour; the wordmark inherits the
 // app font (Poppins). Auto-imported app-wide from the base layer.
 import { BRAND } from '~~/shared/brand'
-withDefaults(defineProps<{ wordmark?: boolean }>(), { wordmark: true })
+// `inverted` swaps the wordmark to white for use on dark surfaces (e.g. the auth
+// brand panel); the mark stays primary-coloured, which reads on light or dark.
+withDefaults(defineProps<{ wordmark?: boolean, inverted?: boolean }>(), { wordmark: true, inverted: false })
 </script>
 
 <template>
@@ -15,6 +17,6 @@ withDefaults(defineProps<{ wordmark?: boolean }>(), { wordmark: true })
         stroke-width="2.5" stroke-linecap="round"
       />
     </svg>
-    <span v-if="wordmark" class="text-lg font-bold tracking-tight text-highlighted">{{ BRAND.name }}</span>
+    <span v-if="wordmark" class="text-lg font-bold tracking-tight" :class="inverted ? 'text-white' : 'text-highlighted'">{{ BRAND.name }}</span>
   </span>
 </template>

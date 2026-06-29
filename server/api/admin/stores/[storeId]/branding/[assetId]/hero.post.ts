@@ -16,9 +16,11 @@ export default defineEventHandler(async (event) => {
   const admin = supabaseAdmin(event)
   if (parsed.data.hero) {
     await admin.from('branding_assets').update({ used_as: null }).eq('store_id', storeId).eq('used_as', 'hero')
+    // Clear the AI score fields so a hand-picked hero reads as MANUAL — selectHero
+    // keeps a manual choice (no hero_scored_at) sticky and never re-scores over it.
     const { data } = await admin
       .from('branding_assets')
-      .update({ used_as: 'hero' })
+      .update({ used_as: 'hero', hero_scored_at: null, hero_score: null, hero_reason: null })
       .eq('store_id', storeId)
       .eq('id', assetId)
       .select('id')

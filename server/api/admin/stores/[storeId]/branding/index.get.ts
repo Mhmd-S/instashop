@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const admin = supabaseAdmin(event)
   const { data, error } = await admin
     .from('branding_assets')
-    .select('id, public_url, role, caption, used_as, ig_permalink')
+    .select('id, public_url, role, caption, used_as, ig_permalink, source, hero_score, hero_reason')
     .eq('store_id', storeId)
     .order('created_at', { ascending: false })
     .limit(60)

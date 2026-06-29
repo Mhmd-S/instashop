@@ -72,7 +72,22 @@ const previewItems = computed<PreviewItem[]>(() => {
   }
   return items
 })
-const heroImage = computed(() => previewItems.value.find((p) => p.image)?.image ?? null)
+// The store's real branding assets (IG-imported posts + any auto-selected product
+// hero). Drives the hero manager below AND the preview's hero image, so the preview
+// shows the actual hero the storefront serves — not a guess from the first product.
+const { data: brandingData, refresh: refreshBranding } = useFetch(`/api/admin/stores/${props.storeId}/branding`, {
+  lazy: true,
+  getCachedData: () => undefined,
+})
+const brandingAssets = computed(() => brandingData.value?.assets ?? [])
+const currentHero = computed(() => brandingAssets.value.find((a) => a.used_as === 'hero') ?? null)
+// Manual-override choices: imported posts that have an image. The product-derived hero
+// row (source==='product') is the automatic fallback, not offered as a manual pick.
+const heroCandidates = computed(() => brandingAssets.value.filter((a) => a.public_url && a.source !== 'product'))
+
+// Preview hero: the real chosen hero, falling back to the first product photo so an
+// image-led hero variant still demonstrates before a hero is chosen.
+const heroImage = computed(() => currentHero.value?.public_url ?? previewItems.value.find((p) => p.image)?.image ?? null)
 
 // --- editable state, seeded from the active theme ---
 const COLOR_KEYS = ['primary', 'secondary', 'accent', 'bg', 'fg', 'muted', 'card', 'border'] as const
@@ -101,8 +116,10 @@ const layout = ref<string>('catalog')
 const heroStyle = ref<string>('split')
 const productCard = ref<string>('square')
 const cardHover = ref<string>('lift')
-// Section composition isn't edited inline (v1); preserved verbatim on save.
-let sectionOrder: DesignTokens['artDirection']['sectionOrder'] = ['hero', 'categories', 'products']
+// Section composition isn't edited inline here (the website builder owns it); the
+// loaded order is preserved verbatim on save, and per-section `sections` config is
+// preserved server-side (index.put.ts merges it from the current theme).
+let sectionOrder: DesignTokens['artDirection']['sectionOrder'] = ['hero', 'shopByCategory', 'products']
 
 function loadFrom(t: DesignTokens) {
   for (const k of COLOR_KEYS) colors[k] = t.palette[k]
@@ -221,7 +238,21 @@ const quickAddStyle = computed(() => ({
 // (the admin doesn't otherwise load them). Re-runs as the seller switches fonts.
 useHead({ link: computed(() => googleFontLinks(heading.value, body.value)) })
 
-const opts = (a: readonly string[]) => a.map((v) => ({ label: v, value: v }))
+// Human-friendly labels for the enum tokens — USelect shows these while the bound
+// value stays the validated enum. Font names (unmapped) fall through title-cased,
+// which leaves already-proper names (e.g. "Playfair Display") untouched.
+const LABELS: Record<string, string> = {
+  none: 'None', sm: 'Slight', md: 'Medium', lg: 'Large', xl: 'Extra large', full: 'Full',
+  compact: 'Compact', cozy: 'Cozy', comfortable: 'Comfortable',
+  solid: 'Solid', soft: 'Soft', outline: 'Outline', pill: 'Pill',
+  subtle: 'Subtle', pronounced: 'Pronounced',
+  catalog: 'Catalog', lookbook: 'Lookbook', editorial: 'Editorial', boutique: 'Boutique',
+  split: 'Split', 'full-bleed': 'Full-bleed image', centered: 'Centered', offset: 'Offset',
+  portrait: 'Portrait', square: 'Square', tile: 'Compact tile',
+  lift: 'Lift', zoom: 'Zoom',
+}
+const titleCase = (s: string) => s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+const opts = (a: readonly string[]) => a.map((v) => ({ label: LABELS[v] ?? titleCase(v), value: v }))
 
 const generating = ref(false)
 const saving = ref(false)
@@ -310,6 +341,40 @@ async function onLogo(e: Event) {
   }
 }
 
+// --- hero image: auto-pick (AI-scored) + manual override ---
+const heroPicking = ref(false)
+const heroErr = ref<string | null>(null)
+
+async function autoPickHero() {
+  heroPicking.value = true
+  heroErr.value = null
+  try {
+    const res = await $fetch(`/api/admin/stores/${props.storeId}/branding/auto-hero`, {
+      method: 'POST',
+      body: { force: true },
+    })
+    await refreshBranding()
+    if (res.status === 'no-candidates')
+      heroErr.value = 'No images to choose from yet — import from Instagram or add product photos first.'
+    else if (res.status === 'error')
+      heroErr.value = 'Could not pick a hero image — please try again.'
+  } catch (e) {
+    heroErr.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not pick a hero image.'
+  } finally {
+    heroPicking.value = false
+  }
+}
+
+async function setHero(id: string) {
+  heroErr.value = null
+  try {
+    await $fetch(`/api/admin/stores/${props.storeId}/branding/${id}/hero`, { method: 'POST', body: { hero: true } })
+    await refreshBranding()
+  } catch (e) {
+    heroErr.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not set the hero image.'
+  }
+}
+
 // The wizard saves the theme from its Next button when embedded.
 defineExpose({ save })
 </script>
@@ -350,6 +415,70 @@ defineExpose({ save })
         </div>
       </UCard>
 
+      <!-- HERO & LANDING IMAGE: the storefront's lead photo. Picked automatically
+           (AI-scored from branding posts & product photos); the owner can re-pick or
+           choose another. This is the "select the proper hero image" surface. -->
+      <UCard class="mt-4">
+        <template #header>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <UIcon name="i-lucide-image" class="size-5" />
+              </div>
+              <div>
+                <h3 class="font-semibold text-highlighted">Hero &amp; landing image</h3>
+                <p class="mt-0.5 text-sm text-muted">Your storefront's first impression — picked from your best photo.</p>
+              </div>
+            </div>
+            <UButton :loading="heroPicking" icon="i-lucide-sparkles" color="primary" variant="soft" size="sm" label="Auto-pick hero" @click="autoPickHero" />
+          </div>
+        </template>
+
+        <UAlert v-if="heroErr" color="error" variant="soft" icon="i-lucide-circle-alert" :description="heroErr" class="mb-4" />
+
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div class="aspect-video overflow-hidden rounded-lg border border-default bg-muted sm:w-56 sm:shrink-0">
+            <img v-if="currentHero?.public_url" :src="currentHero.public_url" alt="Current hero image" class="size-full object-cover">
+            <div v-else class="grid size-full place-items-center text-dimmed"><UIcon name="i-lucide-image-off" class="size-7" /></div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <template v-if="currentHero">
+              <div class="flex flex-wrap items-center gap-2">
+                <UBadge :label="currentHero.source === 'product' ? 'From a product photo' : 'From your posts'" color="neutral" variant="subtle" size="sm" />
+                <UBadge v-if="typeof currentHero.hero_score === 'number'" :label="`AI match ${currentHero.hero_score}/100`" color="primary" variant="subtle" size="sm" />
+              </div>
+              <p v-if="currentHero.hero_reason" class="mt-2 text-sm text-muted">
+                <span class="font-medium text-highlighted">Why this image:</span> {{ currentHero.hero_reason }}
+              </p>
+              <p v-else class="mt-2 text-sm text-muted">This image leads your storefront. Auto-pick again, or choose another below.</p>
+            </template>
+            <p v-else class="text-sm text-muted">
+              No hero image yet. Auto-pick one from your photos, or connect Instagram for lifestyle shots. Without a hero, your storefront falls back to a clean text-led header.
+            </p>
+          </div>
+        </div>
+
+        <!-- Override: pick a different imported post as the hero. -->
+        <div v-if="heroCandidates.length" class="mt-5">
+          <p class="text-xs font-medium uppercase tracking-wide text-dimmed">Or choose another</p>
+          <ul class="mt-2 flex gap-2 overflow-x-auto pb-1">
+            <li v-for="a in heroCandidates" :key="a.id" class="shrink-0">
+              <button
+                type="button"
+                class="relative block size-20 overflow-hidden rounded-lg border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                :class="a.used_as === 'hero' ? 'border-primary' : 'border-transparent hover:border-default'"
+                :aria-pressed="a.used_as === 'hero'"
+                :aria-label="a.used_as === 'hero' ? 'Current hero image' : 'Use this image as hero'"
+                @click="setHero(a.id)"
+              >
+                <img :src="a.public_url!" alt="" class="size-full object-cover">
+                <span v-if="a.used_as === 'hero'" class="absolute inset-x-0 bottom-0 grid place-items-center bg-primary/90 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-inverted">Hero</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </UCard>
+
       <!-- SPLIT WORKSPACE: settings (left, scrolls with the page) + live preview (right,
            sticky). Collapses to a single stacked column below lg and whenever embedded
            (the onboarding wizard caps width at max-w-3xl). -->
@@ -362,7 +491,7 @@ defineExpose({ save })
               <template #header><h3 class="font-semibold text-highlighted">Colors</h3></template>
               <div class="space-y-2.5">
                 <div v-for="c in VISIBLE_COLORS" :key="c.key" class="flex items-center gap-3">
-                  <input v-model="colors[c.key]" type="color" class="size-8 shrink-0 cursor-pointer rounded border border-default bg-transparent">
+                  <input v-model="colors[c.key]" type="color" :aria-label="c.label" class="size-9 shrink-0 cursor-pointer rounded-lg border border-default bg-transparent p-0.5 transition hover:border-primary/60">
                   <span class="w-20 text-sm text-muted">{{ c.label }}</span>
                   <UInput v-model="colors[c.key]" size="sm" class="flex-1 font-mono" />
                   <UBadge v-if="colorContrast[c.key]" :color="colorContrast[c.key]!.color" variant="soft" size="sm" class="shrink-0" :label="colorContrast[c.key]!.label" />

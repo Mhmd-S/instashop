@@ -192,6 +192,14 @@ if (import.meta.client) {
   })
 }
 
+// Hold the seller on the Instagram step while their account is still being
+// processed: the theme/products/branding steps are populated by exactly this
+// import, so advancing early would walk them into half-empty screens. An import
+// that errors does NOT block — we keep what we saved and let them move on.
+const importBlocking = computed(
+  () => currentKey.value === 'instagram' && igConnected.value && importPhase.value === 'running',
+)
+
 // Per-step review acknowledgements for the auto-filled steps. Each must be
 // explicitly marked reviewed before it counts as done (setup-status gates on this),
 // then we advance to the next step.
@@ -294,8 +302,8 @@ async function createStore() {
     <template v-if="!storeId">
       <div class="mb-6">
         <UButton to="/dashboard" icon="i-lucide-arrow-left" label="Back to dashboard" variant="link" color="neutral" size="sm" class="-ml-2.5" />
-        <h1 class="text-2xl font-bold text-highlighted mt-1">Create your store</h1>
-        <p class="text-muted text-sm mt-1">First, the basics — then we'll guide you through each step below.</p>
+        <h1 class="text-2xl font-semibold tracking-tight text-ink mt-1">Create your store</h1>
+        <p class="text-ink-muted text-sm mt-1">First, the basics — then we'll guide you through each step below.</p>
       </div>
 
       <!-- Same stepper as the rest of the wizard, in a pre-store preview state. -->
@@ -303,12 +311,12 @@ async function createStore() {
         <OnboardingStepper :store-id="''" :status="null" />
       </div>
 
-      <UCard>
+      <UCard class="shadow-card">
         <div class="flex items-start gap-3 mb-5">
           <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-store" class="size-5" /></div>
           <div>
-            <h2 class="font-semibold text-highlighted">Store details</h2>
-            <p class="text-sm text-muted mt-0.5">Your subdomain is your public storefront URL — you can rename the store anytime.</p>
+            <h2 class="font-semibold text-ink">Store details</h2>
+            <p class="text-sm text-ink-muted mt-0.5">Your subdomain is your public storefront URL — you can rename the store anytime.</p>
           </div>
         </div>
         <form class="space-y-5" @submit.prevent="createStore">
@@ -317,7 +325,7 @@ async function createStore() {
           </UFormField>
           <UFormField label="Subdomain" name="subdomain">
             <UInput v-model="subdomain" type="text" required placeholder="acme" class="w-full" :ui="{ base: 'lowercase' }">
-              <template #trailing><span class="text-sm text-muted">.chanis.app</span></template>
+              <template #trailing><span class="text-sm text-ink-muted">.chanis.app</span></template>
             </UInput>
             <template v-if="availability" #help>
               <span v-if="availability.available" class="text-success inline-flex items-center gap-1">
@@ -342,10 +350,10 @@ async function createStore() {
     <template v-else>
       <div class="mb-6">
         <UButton to="/dashboard" icon="i-lucide-arrow-left" label="Exit setup" variant="link" color="neutral" size="sm" class="-ml-2.5" />
-        <h1 class="text-2xl font-bold text-highlighted mt-1">
+        <h1 class="text-2xl font-semibold tracking-tight text-ink mt-1">
           Set up <span class="text-primary">{{ store?.name ?? 'your store' }}</span>
         </h1>
-        <p class="text-muted text-sm mt-1">{{ completedCount }} of {{ TRACKED_STEPS.length }} essentials done — you can finish anytime.</p>
+        <p class="text-ink-muted text-sm mt-1">{{ completedCount }} of {{ TRACKED_STEPS.length }} essentials done — you can finish anytime.</p>
       </div>
 
       <!-- stepper -->
@@ -354,17 +362,17 @@ async function createStore() {
       </div>
 
       <!-- Instagram -->
-      <UCard v-if="currentKey === 'instagram'">
+      <UCard v-if="currentKey === 'instagram'" class="shadow-card">
         <div class="space-y-4">
           <div class="flex items-start gap-3">
             <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-instagram" class="size-5" /></div>
             <div>
-              <h2 class="font-semibold text-highlighted">Connect Instagram</h2>
-              <p class="text-sm text-muted mt-0.5">
+              <h2 class="font-semibold text-ink">Connect Instagram</h2>
+              <p class="text-sm text-ink-muted mt-0.5">
                 Import your posts as draft products automatically — the fastest way to fill your store. You can also add products by hand.
               </p>
-              <p v-if="!status?.steps.instagram.connected" class="text-xs text-dimmed mt-1.5">
-                Requires an Instagram <span class="text-muted">Professional</span> (Business or Creator) account.
+              <p v-if="!status?.steps.instagram.connected" class="text-xs text-ink-subtle mt-1.5">
+                Requires an Instagram <span class="text-ink-muted">Professional</span> (Business or Creator) account.
               </p>
             </div>
           </div>
@@ -388,7 +396,7 @@ async function createStore() {
                (streamed from ig/sync-stream) and stays put, fully checked, when done.
                No separate "connected" or summary cards — the list says it all. -->
           <template v-else>
-            <div class="rounded-xl border border-default bg-elevated/40 p-5">
+            <div class="rounded-xl border border-default bg-page/40 p-5">
               <div class="flex items-center gap-2.5">
                 <UIcon
                   :name="importPhase === 'done'
@@ -403,7 +411,7 @@ async function createStore() {
                       ? 'text-warning'
                       : 'animate-spin text-primary'"
                 />
-                <h3 class="font-semibold text-highlighted">
+                <h3 class="font-semibold text-ink">
                   {{ importPhase === 'done'
                     ? 'Imported from Instagram'
                     : importPhase === 'error'
@@ -411,12 +419,12 @@ async function createStore() {
                       : 'Setting up your store from Instagram…' }}
                 </h3>
               </div>
-              <p class="text-sm text-muted mt-1 mb-4">
+              <p class="text-sm text-ink-muted mt-1 mb-4">
                 {{ importPhase === 'done'
                   ? 'Your posts are in as draft products — set prices and publish under Products. Hit “Next” to keep going.'
                   : importPhase === 'error'
                     ? 'We saved what we could. Refresh the page to try the rest again, or just keep going.'
-                    : 'This usually takes under a minute. You can keep setting up — we\'ll finish in the background.' }}
+                    : 'This usually takes under a minute — hang tight, we\'ll move you to the next step the moment it\'s done.' }}
               </p>
               <ul class="space-y-2.5">
                 <li
@@ -435,16 +443,10 @@ async function createStore() {
                       ? 'text-success'
                       : importSteps[step.key].status === 'active'
                         ? 'text-primary animate-spin'
-                        : 'text-dimmed'"
+                        : 'text-ink-subtle'"
                   />
-                  <span :class="importSteps[step.key].status === 'pending' ? 'text-dimmed' : 'text-highlighted'">
+                  <span :class="importSteps[step.key].status === 'pending' ? 'text-ink-subtle' : 'text-ink'">
                     {{ importSteps[step.key].status === 'done' ? step.done : step.doing }}
-                  </span>
-                  <span
-                    v-if="importSteps[step.key].status === 'active' && (importSteps[step.key].total ?? 0) > 0"
-                    class="ml-auto text-xs text-muted tabular-nums"
-                  >
-                    {{ importSteps[step.key].current ?? 0 }} / {{ importSteps[step.key].total }}
                   </span>
                 </li>
               </ul>
@@ -463,8 +465,8 @@ async function createStore() {
         <div class="flex items-start gap-3">
           <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-palette" class="size-5" /></div>
           <div>
-            <h2 class="font-semibold text-highlighted">Make it yours</h2>
-            <p class="text-sm text-muted mt-0.5">
+            <h2 class="font-semibold text-ink">Make it yours</h2>
+            <p class="text-sm text-ink-muted mt-0.5">
               We generated a palette, fonts and mood from your logo — review and tweak anything below.
             </p>
           </div>
@@ -477,8 +479,8 @@ async function createStore() {
         <div class="flex items-start gap-3">
           <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-package" class="size-5" /></div>
           <div>
-            <h2 class="font-semibold text-highlighted">Review your products</h2>
-            <p class="text-sm text-muted mt-0.5">Set prices, edit details and add photos — expand any to edit. Hitting <span class="font-medium text-highlighted">Next</span> publishes everything you've priced; unpriced items stay as drafts you can publish later.</p>
+            <h2 class="font-semibold text-ink">Review your products</h2>
+            <p class="text-sm text-ink-muted mt-0.5">Set prices, edit details and add photos — expand any to edit. Hitting <span class="font-medium text-ink">Next</span> publishes everything you've priced; unpriced items stay as drafts you can publish later.</p>
           </div>
         </div>
         <ProductsReview ref="productsReview" :store-id="storeId ?? ''" />
@@ -489,8 +491,8 @@ async function createStore() {
         <div class="flex items-start gap-3">
           <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-images" class="size-5" /></div>
           <div>
-            <h2 class="font-semibold text-highlighted">Branding &amp; hero</h2>
-            <p class="text-sm text-muted mt-0.5">
+            <h2 class="font-semibold text-ink">Branding &amp; hero</h2>
+            <p class="text-sm text-ink-muted mt-0.5">
               Pick a lifestyle post as your storefront hero banner. These were captured during import.
             </p>
           </div>
@@ -503,8 +505,8 @@ async function createStore() {
         <div class="flex items-start gap-3">
           <div class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><UIcon name="i-lucide-credit-card" class="size-5" /></div>
           <div>
-            <h2 class="font-semibold text-highlighted">Accept payments</h2>
-            <p class="text-sm text-muted mt-0.5">
+            <h2 class="font-semibold text-ink">Accept payments</h2>
+            <p class="text-sm text-ink-muted mt-0.5">
               Connect Stripe to take card payments — money lands in your own Stripe account. Orders still work with cash on delivery without this.
             </p>
           </div>
@@ -518,33 +520,33 @@ async function createStore() {
       </div>
 
       <!-- Preview -->
-      <UCard v-else>
+      <UCard v-else class="shadow-card">
         <div class="space-y-5">
           <div class="text-center">
             <div class="mx-auto mb-3 grid size-12 place-items-center rounded-xl bg-primary/10 text-primary"><UIcon name="i-lucide-rocket" class="size-6" /></div>
-            <h2 class="text-xl font-bold text-highlighted">Your store is live 🎉</h2>
-            <p class="text-sm text-muted mt-1">Here's the storefront you built — share the link or keep refining.</p>
+            <h2 class="text-xl font-semibold tracking-tight text-ink">Your store is live 🎉</h2>
+            <p class="text-sm text-ink-muted mt-1">Here's the storefront you built — share the link or keep refining.</p>
           </div>
 
           <div class="rounded-xl border border-default overflow-hidden">
-            <div class="flex items-center gap-1.5 px-3 py-2 border-b border-default bg-elevated">
+            <div class="flex items-center gap-1.5 px-3 py-2 border-b border-default bg-page">
               <span class="size-2.5 rounded-full bg-error/50" />
               <span class="size-2.5 rounded-full bg-warning/50" />
               <span class="size-2.5 rounded-full bg-success/50" />
-              <span class="ml-2 truncate text-xs text-muted">{{ previewUrl }}</span>
+              <span class="ml-2 truncate text-xs text-ink-muted">{{ previewUrl }}</span>
             </div>
             <iframe :src="previewUrl" class="w-full h-[460px] bg-white" title="Storefront preview" loading="lazy" />
           </div>
 
           <div v-if="store" class="rounded-xl border border-default p-4">
-            <p class="mb-3 text-sm font-semibold text-highlighted">Share your shop</p>
+            <p class="mb-3 text-sm font-semibold text-ink">Share your shop</p>
             <ShareKit :subdomain="store.subdomain" :store-id="store.id" />
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
             <div v-for="s in ONBOARDING_STEPS.slice(0, 5)" :key="s.key" class="flex items-center gap-2 rounded-lg border border-default px-3 py-2 text-sm">
-              <UIcon :name="doneOf(s.key) ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'" :class="doneOf(s.key) ? 'text-success' : 'text-dimmed'" class="size-4 shrink-0" />
-              <span :class="doneOf(s.key) ? 'text-highlighted' : 'text-muted'">{{ s.label }}</span>
+              <UIcon :name="doneOf(s.key) ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'" :class="doneOf(s.key) ? 'text-success' : 'text-ink-subtle'" class="size-4 shrink-0" />
+              <span :class="doneOf(s.key) ? 'text-ink' : 'text-ink-muted'">{{ s.label }}</span>
             </div>
           </div>
 
@@ -561,7 +563,9 @@ async function createStore() {
         <UButton
           v-if="currentKey !== 'preview'"
           color="primary" trailing-icon="i-lucide-arrow-right" label="Next"
-          :loading="reviewing !== null || savingStep" :disabled="reviewing !== null || savingStep" @click="advance"
+          :loading="reviewing !== null || savingStep || importBlocking"
+          :disabled="reviewing !== null || savingStep || importBlocking"
+          @click="advance"
         />
         <UButton v-else to="/dashboard" color="primary" trailing-icon="i-lucide-check" label="Finish" />
       </div>

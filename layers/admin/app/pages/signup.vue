@@ -51,35 +51,28 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-default p-4">
-    <UCard class="w-full max-w-sm">
-      <template #header>
-        <BrandLogo class="mb-3" />
-        <h1 class="text-xl font-semibold text-highlighted">Create your account</h1>
-        <p class="text-sm text-muted mt-1">Start your store</p>
-      </template>
+  <AuthShell>
+    <h1 class="text-h2 font-semibold text-ink">Create your account</h1>
+    <p class="mt-2 text-ink-muted">Open your shop — free to start, no card required.</p>
 
-      <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
-        <UFormField label="Name" name="fullName">
-          <UInput v-model="state.fullName" placeholder="Your name" autocomplete="name" class="w-full" />
-        </UFormField>
-        <UFormField label="Email" name="email">
-          <UInput v-model="state.email" type="email" placeholder="you@store.com" autocomplete="email" class="w-full" />
-        </UFormField>
-        <UFormField label="Password" name="password" help="At least 6 characters">
-          <UInput v-model="state.password" type="password" placeholder="••••••••" autocomplete="new-password" class="w-full" />
-        </UFormField>
-        <UAlert v-if="error" color="error" variant="soft" :title="error" icon="i-lucide-circle-alert" />
-        <UAlert v-if="notice" color="info" variant="soft" :title="notice" icon="i-lucide-mail" />
-        <UButton type="submit" block size="lg" :loading="loading" label="Create account" />
-      </UForm>
+    <UForm :schema="schema" :state="state" class="mt-8 space-y-4" @submit="onSubmit">
+      <UFormField label="Name" name="fullName">
+        <UInput v-model="state.fullName" size="xl" placeholder="Your name" autocomplete="name" class="w-full" />
+      </UFormField>
+      <UFormField label="Email" name="email">
+        <UInput v-model="state.email" type="email" size="xl" placeholder="you@store.com" autocomplete="email" class="w-full" />
+      </UFormField>
+      <UFormField label="Password" name="password" help="At least 6 characters">
+        <UInput v-model="state.password" type="password" size="xl" placeholder="••••••••" autocomplete="new-password" class="w-full" />
+      </UFormField>
+      <UAlert v-if="error" color="error" variant="soft" :title="error" icon="i-lucide-circle-alert" />
+      <UAlert v-if="notice" color="info" variant="soft" :title="notice" icon="i-lucide-mail" />
+      <UButton type="submit" block size="xl" :loading="loading" label="Create account" class="shadow-card" />
+    </UForm>
 
-      <template #footer>
-        <p class="text-sm text-muted text-center">
-          Already have an account?
-          <ULink to="/login" class="text-primary font-medium">Sign in</ULink>
-        </p>
-      </template>
-    </UCard>
-  </div>
+    <p class="mt-8 text-sm text-ink-muted">
+      Already have an account?
+      <ULink to="/login" class="font-medium text-primary">Sign in</ULink>
+    </p>
+  </AuthShell>
 </template>

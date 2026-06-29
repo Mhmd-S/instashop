@@ -5,7 +5,7 @@
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-default text-default">
+  <div class="flex min-h-screen flex-col bg-page text-ink">
     <MarketingHeader />
     <main class="flex-1">
       <slot />

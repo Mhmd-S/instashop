@@ -8,6 +8,7 @@ import { extractBrandColor } from './logoColor'
 import { derivePaletteFromBrand } from './derive'
 import { generateThemeTokens, type ThemeImage } from './gemini'
 import { persistTheme } from './persist'
+import { selectHero } from './hero'
 
 export interface ManualLogo {
   buf: Buffer
@@ -218,6 +219,11 @@ export async function buildAndPersistTheme(event: H3Event, storeId: string, manu
     },
     { logo: themeLogo },
   )
+
+  // Auto-pick a hero image now the theme exists, so a one-click "Regenerate theme"
+  // also refreshes the hero — including for stores with no IG import (product-photo
+  // fallback). Best-effort; respects a manual pick and won't churn a settled hero.
+  await selectHero(event, storeId)
 
   return {
     theme,

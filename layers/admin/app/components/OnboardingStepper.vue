@@ -42,13 +42,13 @@ function isDone(key: OnboardingStepKey, index: number): boolean {
             : isDone(s.key, i)
               ? 'border-success bg-success/10 text-success'
               : storeId
-                ? 'border-default text-dimmed group-hover:border-primary'
-                : 'border-default text-dimmed'"
+                ? 'border-default text-ink-subtle group-hover:border-primary'
+                : 'border-default text-ink-subtle'"
         >
           <UIcon v-if="isDone(s.key, i) && current !== s.key" name="i-lucide-check" class="size-4" />
           <UIcon v-else :name="s.icon" class="size-4" />
         </span>
-        <span class="hidden sm:inline text-sm" :class="current === s.key ? 'text-highlighted font-medium' : 'text-muted'">{{ s.label }}</span>
+        <span class="hidden sm:inline text-sm" :class="current === s.key ? 'text-ink font-medium' : 'text-ink-muted'">{{ s.label }}</span>
       </component>
       <span v-if="i < ONBOARDING_STEPS.length - 1" class="mx-2 h-px flex-1 bg-default" />
     </li>

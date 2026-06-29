@@ -42,31 +42,24 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-default p-4">
-    <UCard class="w-full max-w-sm">
-      <template #header>
-        <BrandLogo class="mb-3" />
-        <h1 class="text-xl font-semibold text-highlighted">Sign in</h1>
-        <p class="text-sm text-muted mt-1">Seller dashboard</p>
-      </template>
+  <AuthShell>
+    <h1 class="text-h2 font-semibold text-ink">Welcome back</h1>
+    <p class="mt-2 text-ink-muted">Sign in to your seller dashboard.</p>
 
-      <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
-        <UFormField label="Email" name="email">
-          <UInput v-model="state.email" type="email" placeholder="you@store.com" autocomplete="email" class="w-full" />
-        </UFormField>
-        <UFormField label="Password" name="password">
-          <UInput v-model="state.password" type="password" placeholder="••••••••" autocomplete="current-password" class="w-full" />
-        </UFormField>
-        <UAlert v-if="error" color="error" variant="soft" :title="error" icon="i-lucide-circle-alert" />
-        <UButton type="submit" block size="lg" :loading="loading" label="Sign in" />
-      </UForm>
+    <UForm :schema="schema" :state="state" class="mt-8 space-y-4" @submit="onSubmit">
+      <UFormField label="Email" name="email">
+        <UInput v-model="state.email" type="email" size="xl" placeholder="you@store.com" autocomplete="email" class="w-full" />
+      </UFormField>
+      <UFormField label="Password" name="password">
+        <UInput v-model="state.password" type="password" size="xl" placeholder="••••••••" autocomplete="current-password" class="w-full" />
+      </UFormField>
+      <UAlert v-if="error" color="error" variant="soft" :title="error" icon="i-lucide-circle-alert" />
+      <UButton type="submit" block size="xl" :loading="loading" label="Sign in" class="shadow-card" />
+    </UForm>
 
-      <template #footer>
-        <p class="text-sm text-muted text-center">
-          No account?
-          <ULink to="/signup" class="text-primary font-medium">Sign up</ULink>
-        </p>
-      </template>
-    </UCard>
-  </div>
+    <p class="mt-8 text-sm text-ink-muted">
+      No account?
+      <ULink to="/signup" class="font-medium text-primary">Sign up</ULink>
+    </p>
+  </AuthShell>
 </template>

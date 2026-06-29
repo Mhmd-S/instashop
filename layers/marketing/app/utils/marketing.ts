@@ -11,7 +11,6 @@ export const MARKETING_NAV: NavItem[] = [
   { label: 'Tour', to: '/tour', icon: 'i-lucide-compass' },
   { label: 'Screenshots', to: '/screenshots', icon: 'i-lucide-image' },
   { label: 'Pricing', to: '/pricing', icon: 'i-lucide-tag' },
-  { label: 'Customers', to: '/customers', icon: 'i-lucide-store' },
   { label: 'Manifesto', to: '/manifesto', icon: 'i-lucide-feather' },
   { label: 'Blog', to: '/blog', icon: 'i-lucide-newspaper' },
 ]
@@ -28,11 +27,11 @@ export interface Feature {
 
 export const FEATURES: Feature[] = [
   {
-    icon: 'i-lucide-download',
-    title: 'Import from Instagram',
-    summary: 'We pull your posts and turn each one into a ready-to-edit product.',
+    icon: 'i-lucide-sparkles',
+    title: 'Your feed becomes your catalogue',
+    summary: 'We read your posts and turn the ones you sell into ready-to-edit products — automatically.',
     detail:
-      'Connect your account once and Chanis imports your existing posts — images, captions and all. Each post becomes a draft product with a title and description suggested for you, so a feed you have spent years building becomes a catalogue in minutes instead of a weekend of copy-paste.',
+      'Connect your account once and Chanis reads your feed for you — images, captions and all. It picks out the posts you actually sell and turns each into a draft product with a title and description written for you, so a feed you have spent years building becomes a catalogue in minutes, with nothing to import by hand.',
   },
   {
     icon: 'i-lucide-palette',
@@ -83,7 +82,7 @@ export interface Shot {
 export const GALLERY: Shot[] = [
   { kind: 'desktop', title: 'The seller dashboard', caption: 'Your stores, orders and revenue at a glance the moment you sign in.' },
   { kind: 'mobile', title: 'A live storefront', caption: 'How your shop looks to a buyer arriving from your bio link.' },
-  { kind: 'video', title: 'Import in under two minutes', caption: 'Connect Instagram, pick the posts to sell, publish. Start to finish.' },
+  { kind: 'video', title: 'From feed to shop in two minutes', caption: 'Connect Instagram, review the products we pulled, publish. Start to finish.' },
   { kind: 'desktop', title: 'The product editor', caption: 'Tweak titles, prices and photos with a live preview beside you.' },
   { kind: 'desktop', title: 'The theme editor', caption: 'Nudge colours, fonts and spacing — or accept the brand we matched for you.' },
   { kind: 'video', title: 'A buyer checks out', caption: 'Cart to Stripe payment to order confirmation, on a phone, in one flow.' },
@@ -237,7 +236,7 @@ export const PRICING: PricingTier[] = [
     priceMonthly: 0,
     blurb: 'Everything you need to open a shop and take your first orders.',
     features: [
-      'Import from Instagram',
+      'Automatic Instagram import',
       'One storefront on a chanis.app subdomain',
       'Up to 25 products',
       'Stripe checkout to your own account',

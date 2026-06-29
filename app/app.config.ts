@@ -4,6 +4,23 @@ export default defineAppConfig({
       primary: 'indigo',
       neutral: 'olive'
     },
+    // Roomier large controls (Stripe-grade chunk). Scoped to lg/xl — the sizes the
+    // marketing CTAs use — so dense admin/storefront UIs (md/sm) stay compact.
+    button: {
+      variants: {
+        size: {
+          lg: { base: 'px-4 py-2.5 text-sm gap-2' },
+          xl: { base: 'px-5 py-3 text-base gap-2' }
+        }
+      }
+    },
+    input: {
+      variants: {
+        size: {
+          xl: { base: 'px-4 py-3 text-base gap-2', leading: 'ps-4', trailing: 'pe-4' }
+        }
+      }
+    },
     icons: {
       arrowDown: 'i-ph-arrow-down',
       arrowLeft: 'i-ph-arrow-left',

@@ -13,10 +13,10 @@ import {
   ALLOWED_MOOD,
   ALLOWED_PRODUCT_CARD,
   ALLOWED_RADIUS,
-  ALLOWED_SECTION,
   FALLBACK_THEME,
 } from '~~/shared/types/theme'
 import type { DesignTokens, ThemeLogo } from '~~/shared/types/theme'
+import { ALLOWED_SECTION } from '~~/shared/types/template'
 
 const HEX = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a #rrggbb color')
 const enumOf = <T extends readonly string[]>(a: T) => z.enum(a as unknown as [string, ...string[]])
@@ -48,6 +48,10 @@ const Body = z.object({
       productCard: enumOf(ALLOWED_PRODUCT_CARD),
       cardHover: enumOf(ALLOWED_CARD_HOVER),
       sectionOrder: z.array(enumOf(ALLOWED_SECTION)).optional(),
+      // Per-section config map. Accepted loosely here — resolveSections (inside
+      // persistTheme → validateAndRepair) is the single clamp choke-point, exactly
+      // as sectionOrder is. Don't duplicate the discriminated union in zod.
+      sections: z.record(z.any()).optional(),
     })
     .optional(),
 })
@@ -88,11 +92,15 @@ export default defineEventHandler(async (event) => {
     buttonStyle: b.buttonStyle,
     shadow: b.shadow,
     mood: b.mood ?? current.mood,
-    // Re-validated/clamped by persistTheme (repairArtDirection). When the editor omits
-    // it, keep the current art direction. `current` may be an older DB theme that
-    // predates this field, so fall back to the default before merging.
+    // Re-validated/clamped by persistTheme (repairArtDirection → resolveSections). When
+    // the editor omits a field, keep the current art direction. `current` may be an older
+    // DB theme that predates these fields, so fall back to the default before merging.
     artDirection: b.artDirection
-      ? { ...b.artDirection, sectionOrder: b.artDirection.sectionOrder ?? curAD.sectionOrder }
+      ? {
+          ...b.artDirection,
+          sectionOrder: b.artDirection.sectionOrder ?? curAD.sectionOrder,
+          sections: b.artDirection.sections ?? curAD.sections,
+        }
       : curAD,
   }
 

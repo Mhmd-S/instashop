@@ -7,9 +7,10 @@ defineProps<{ products: StorefrontProduct[]; emptyText?: string }>()
 const ad = useStoreArtDirection()
 const cart = useCart()
 
-// Quick-add straight from the grid — the single biggest shopping-UX win. The card
-// links to the PDP; this button is a sibling (never nested in the <a>) so a tap adds
-// to the cart without navigating. We flash a tick for ~1.2s as confirmation.
+// Quick-add straight from the gallery — kept understated (a monochrome mark that
+// fades in on hover), so it never competes with the photography. The card links to
+// the PDP; this button is a sibling (never nested in the <a>) so a tap adds without
+// navigating. A tick flashes for ~1.2s as confirmation.
 const justAdded = ref<string | null>(null)
 let flashTimer: ReturnType<typeof setTimeout> | null = null
 function quickAdd(p: StorefrontProduct) {
@@ -29,64 +30,41 @@ onBeforeUnmount(() => { if (flashTimer) clearTimeout(flashTimer) })
 
 <template>
   <div v-if="!products.length" class="py-24 text-center">
-    <UIcon name="i-lucide-package-open" class="mx-auto size-10 text-dimmed" />
-    <p class="mt-3 text-muted">{{ emptyText ?? 'No products yet — check back soon.' }}</p>
+    <p class="text-sm text-muted">{{ emptyText ?? 'New shop — pieces are on their way.' }}</p>
   </div>
 
-  <ul v-else class="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-12 lg:grid-cols-3">
+  <ul v-else class="grid grid-cols-2 gap-x-5 gap-y-12 sm:gap-x-8 sm:gap-y-16 lg:grid-cols-3">
     <li v-for="p in products" :key="p.id" class="group relative">
-      <ULink
-        :to="`/products/${p.slug}`"
-        class="block rounded-[var(--ui-radius)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        <div
-          class="relative overflow-hidden rounded-[var(--ui-radius)] bg-muted"
-          :class="[
-            ad.card.aspect,
-            ad.card.framed ? 'border border-default' : '',
-            ad.card.framed && ad.card.hover === 'lift'
-              ? 'transition duration-200 group-hover:border-primary/50 group-hover:shadow-[var(--t-shadow)] motion-safe:group-hover:-translate-y-1'
-              : '',
-          ]"
-        >
+      <ULink :to="`/products/${p.slug}`" class="block focus:outline-none focus-visible:ring-1 focus-visible:ring-(--ui-text)">
+        <div class="relative overflow-hidden bg-(--t-paper-2)" :class="ad.card.aspect">
           <img
             v-if="p.image_url"
             :src="p.image_url"
             :alt="p.title"
             loading="lazy"
-            class="size-full object-cover"
-            :class="ad.card.hover === 'zoom' ? 'transition duration-500 motion-safe:group-hover:scale-[1.04]' : ''"
+            class="size-full object-cover transition duration-700 ease-soft"
+            :class="ad.card.hover === 'zoom' ? 'motion-safe:group-hover:scale-[1.03]' : ''"
           >
-          <div v-else class="grid size-full place-items-center text-dimmed">
-            <UIcon name="i-lucide-image-off" class="size-7" />
+          <div v-else class="grid size-full place-items-center text-muted/50">
+            <UIcon name="i-lucide-image" class="size-6" />
           </div>
         </div>
 
-        <div class="mt-3" :class="ad.card.align === 'center' ? 'text-center' : ''">
-          <h3 class="line-clamp-2 min-h-[2.5rem] font-heading font-medium leading-snug tracking-[var(--t-heading-tracking)] text-highlighted">
-            {{ p.title }}
-          </h3>
-          <p class="mt-1 text-sm sm:text-base" :class="ad.card.price">
-            {{ formatPrice(p.price_minor, p.currency) }}
-          </p>
+        <div class="mt-3.5">
+          <h3 class="truncate text-sm font-normal leading-snug text-highlighted">{{ p.title }}</h3>
+          <p class="mt-1 text-sm text-muted">{{ formatPrice(p.price_minor, p.currency) }}</p>
         </div>
       </ULink>
 
-      <!-- Quick add — overlaps the image corner; sibling of the link, so a tap adds to
-           cart instead of opening the PDP. Always visible on touch, reveals on hover. -->
-      <UButton
-        :icon="justAdded === p.id ? 'i-lucide-check' : 'i-lucide-plus'"
-        :color="justAdded === p.id ? 'success' : 'primary'"
-        :variant="ad.expressive ? 'solid' : 'soft'"
-        size="sm"
-        :aria-label="`Add ${p.title} to cart`"
-        :class="[
-          'absolute right-2 top-2 z-10 shadow-[var(--t-shadow)] backdrop-blur transition',
-          ad.expressive ? 'rounded-full' : '',
-          'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
-        ]"
+      <!-- Quick add — monochrome, fades in on hover (always visible on touch). -->
+      <button
+        type="button"
+        :aria-label="`Add ${p.title} to bag`"
+        class="absolute right-2.5 top-2.5 grid size-9 place-items-center rounded-full border border-(--t-rule-strong) bg-(--ui-bg)/85 text-highlighted backdrop-blur transition duration-200 hover:border-(--ui-text) focus:outline-none focus-visible:ring-1 focus-visible:ring-(--ui-text) sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
         @click="quickAdd(p)"
-      />
+      >
+        <UIcon :name="justAdded === p.id ? 'i-lucide-check' : 'i-lucide-plus'" class="size-4" />
+      </button>
     </li>
   </ul>
 </template>

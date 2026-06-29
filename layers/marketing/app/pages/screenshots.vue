@@ -21,10 +21,12 @@ const { adminUrl } = useSurfaceUrls()
 
     <UContainer class="py-16 sm:py-20">
       <div class="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-        <ScreenFrame v-for="shot in GALLERY" :key="shot.title" :shot="shot" />
+        <Reveal v-for="(shot, i) in GALLERY" :key="shot.title" :delay="(i % 3) * 80">
+          <ScreenFrame :shot="shot" />
+        </Reveal>
       </div>
 
-      <p class="mx-auto mt-14 max-w-xl text-center text-sm text-dimmed">
+      <p class="mx-auto mt-14 max-w-xl text-center text-sm text-ink-subtle">
         Storefronts are matched to each seller’s brand, so no two look alike — the frames above are
         representative. The fastest way to see yours is to connect your feed.
       </p>

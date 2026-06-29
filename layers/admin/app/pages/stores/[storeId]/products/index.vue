@@ -57,7 +57,7 @@ async function remove(p: AdminProduct) {
           <tr>
             <th class="py-2 font-medium">Product</th>
             <th class="font-medium">Price</th>
-            <th class="font-medium">Status</th>
+            <th class="font-medium">Visibility</th>
             <th />
           </tr>
         </thead>
@@ -77,22 +77,15 @@ async function remove(p: AdminProduct) {
             </td>
             <td class="text-default">{{ formatPrice(p.price_minor, p.currency) }}</td>
             <td>
-              <UBadge
-                :color="p.published ? 'success' : 'neutral'"
-                variant="subtle"
-                :label="p.published ? 'Published' : 'Hidden'"
+              <USwitch
+                :model-value="p.published"
+                :label="p.published ? 'Visible' : 'Hidden'"
+                size="sm"
+                @update:model-value="togglePublish(p)"
               />
             </td>
             <td class="text-right whitespace-nowrap">
               <div class="flex items-center justify-end gap-1">
-                <UButton
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  :icon="p.published ? 'i-lucide-eye-off' : 'i-lucide-check'"
-                  :label="p.published ? 'Unpublish' : 'Publish'"
-                  @click="togglePublish(p)"
-                />
                 <UButton size="xs" color="error" variant="ghost" icon="i-lucide-trash-2" label="Delete" @click="remove(p)" />
               </div>
             </td>

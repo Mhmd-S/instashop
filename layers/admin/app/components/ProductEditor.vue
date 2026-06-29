@@ -334,7 +334,7 @@ async function remove() {
         <UFormField label="Visibility" name="published">
           <USwitch
             v-model="published"
-            :label="published ? 'Published — live on your storefront' : 'Hidden — not visible to shoppers'"
+            :label="published ? 'Visible — shown on your storefront' : 'Hidden — not shown to shoppers'"
           />
         </UFormField>
         <UFormField label="Categories" name="categories">

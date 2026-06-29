@@ -76,14 +76,18 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          hero_reason: string | null
+          hero_score: number | null
+          hero_scored_at: string | null
           id: string
           ig_child_id: string | null
-          ig_media_id: string
+          ig_media_id: string | null
           ig_permalink: string | null
           ig_posted_at: string | null
           mood_keywords: string[]
           public_url: string | null
           role: string
+          source: string
           storage_path: string | null
           store_id: string
           used_as: string | null
@@ -91,14 +95,18 @@ export type Database = {
         Insert: {
           caption?: string | null
           created_at?: string
+          hero_reason?: string | null
+          hero_score?: number | null
+          hero_scored_at?: string | null
           id?: string
           ig_child_id?: string | null
-          ig_media_id: string
+          ig_media_id?: string | null
           ig_permalink?: string | null
           ig_posted_at?: string | null
           mood_keywords?: string[]
           public_url?: string | null
           role?: string
+          source?: string
           storage_path?: string | null
           store_id: string
           used_as?: string | null
@@ -106,14 +114,18 @@ export type Database = {
         Update: {
           caption?: string | null
           created_at?: string
+          hero_reason?: string | null
+          hero_score?: number | null
+          hero_scored_at?: string | null
           id?: string
           ig_child_id?: string | null
-          ig_media_id?: string
+          ig_media_id?: string | null
           ig_permalink?: string | null
           ig_posted_at?: string | null
           mood_keywords?: string[]
           public_url?: string | null
           role?: string
+          source?: string
           storage_path?: string | null
           store_id?: string
           used_as?: string | null

@@ -17,6 +17,7 @@ import {
 import { cleanCaption } from './cleanCaption'
 import { aHash, isNearDup } from './phash'
 import { slugify } from '~~/shared/utils/slug'
+import { selectHero } from '../theme/hero'
 
 const REVIEW_CONFIDENCE = 0.7 // below → product flagged needs_review
 const MAX_ITEMS = 100
@@ -689,6 +690,10 @@ export async function materializeImport(
     .from('ig_accounts')
     .update({ last_sync_at: new Date().toISOString(), last_sync_error: null })
     .eq('store_id', storeId)
+
+  // Auto-pick the storefront hero from the freshly-imported branding posts (or a
+  // product photo as fallback). Best-effort; a manually-chosen hero stays sticky.
+  await selectHero(event, storeId)
 
   return { total: media.length, imported, merged, branding, skipped, needsReview, usedAi }
 }

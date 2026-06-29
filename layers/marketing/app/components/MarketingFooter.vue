@@ -2,6 +2,10 @@
 // Shared footer for the marketing surface: a CTA strip + sitemap columns.
 import { BRAND } from '~~/shared/brand'
 
+// `cta` (default true) renders the closing CTA strip. The home page sets it false
+// because it already ends with its own immersive gradient CTA band.
+withDefaults(defineProps<{ cta?: boolean }>(), { cta: true })
+
 const { adminUrl } = useSurfaceUrls()
 const year = 2026 // Date.now() is unavailable in this sandbox; brand copyright year.
 
@@ -45,7 +49,7 @@ const columns: { title: string; links: { label: string; to: string; external?: b
   <footer class="border-t border-default bg-[color-mix(in_oklab,var(--ui-primary)_4%,var(--ui-bg))]">
     <UContainer class="py-14">
       <!-- Closing CTA -->
-      <div class="mb-12 flex flex-col items-start justify-between gap-5 rounded-2xl border border-default bg-default p-8 sm:flex-row sm:items-center">
+      <div v-if="cta" class="mb-12 flex flex-col items-start justify-between gap-5 rounded-2xl border border-default bg-default p-8 sm:flex-row sm:items-center">
         <div>
           <h2 class="text-xl font-semibold text-highlighted">{{ BRAND.tagline }}</h2>
           <p class="mt-1 text-sm text-muted">Connect your account and open your shop in minutes — free to start.</p>

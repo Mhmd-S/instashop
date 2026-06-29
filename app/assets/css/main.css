@@ -13,6 +13,64 @@
   --color-accent: var(--t-accent, var(--ui-primary));
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Marketing (apex) design system — Stripe-grade polish, Instagram DNA.
+   Registered in @theme so Tailwind v4 emits the utilities (bg-page, text-ink,
+   text-hero, shadow-float, rounded-mock, ease-soft …). Apex/marketing only —
+   tenant storefronts (layers/storefront) are theme-driven and untouched.
+   ──────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Signature gradient — real Instagram stops; high-key, never muddy. Used in
+     exactly three places: the hero halo, the word "shop", the dark CTA bands. */
+  --gradient-ig: linear-gradient(120deg,
+    #833ab4 0%, #c13584 28%, #e1306c 52%, #f77737 78%, #fcaf45 100%);
+  --gradient-ig-halo: radial-gradient(62% 58% at 70% 38%,
+    #c13584 0%, #e1306c 30%, #f77737 60%, transparent 80%);
+
+  /* Warm olive ink ramp — never #000, never neutral gray. */
+  --color-ink: oklch(0.24 0.02 110);
+  --color-ink-muted: oklch(0.45 0.02 110);
+  --color-ink-subtle: oklch(0.60 0.015 110);
+
+  /* Warm surfaces — the page is off-white so white cards lift by value. */
+  --color-page: oklch(0.985 0.004 110);
+  --color-tint: color-mix(in oklab, var(--ui-primary) 4%, var(--color-page));
+  --color-immersion: oklch(0.22 0.03 300);
+
+  /* Type scale (size + companion leading/tracking), Poppins-tuned. Big = tight
+     tracking + tight leading; settles to 0 at body. Floor is -0.025em. */
+  --text-hero: clamp(2.5rem, 6vw, 3.5rem);
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.025em;
+  --text-h2: 2rem;
+  --text-h2--line-height: 1.12;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h3: 1.375rem;
+  --text-h3--line-height: 1.2;
+  --text-h3--letter-spacing: -0.015em;
+  --text-lead: 1.25rem;
+  --text-lead--line-height: 1.55;
+  --text-cap: 0.8125rem;
+  --text-cap--line-height: 1.4;
+
+  /* Layered, tinted, negative-spread shadows — never a single flat 0.1 drop. */
+  --shadow-card: 0 1px 2px color-mix(in oklab, var(--color-ink) 6%, transparent),
+                 0 8px 20px -8px color-mix(in oklab, var(--color-ink) 9%, transparent);
+  --shadow-float: 0 12px 32px -10px color-mix(in oklab, var(--color-ink) 14%, transparent),
+                  0 30px 60px -30px color-mix(in oklab, var(--ui-primary) 12%, transparent);
+  --shadow-mockup: 0 50px 100px -20px color-mix(in oklab, var(--ui-primary) 16%, transparent),
+                   0 30px 60px -30px color-mix(in oklab, var(--color-ink) 22%, transparent),
+                   inset 0 1px 0 oklch(1 0 0 / 0.5);
+
+  --radius-card: 0.75rem;
+  --radius-mock: 1rem;
+
+  --prose-measure: 64ch;
+
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-stripe: cubic-bezier(0.2, 1, 0.2, 1);
+}
+
 /* Density spacing + typography defaults so the storefront's var-driven utilities
    resolve even when a store has no active theme. Themed stores override these in
    :root via cssVars.ts (tokensToCssVars). */
@@ -27,4 +85,41 @@
   --t-scale: 1.25;
   --t-leading-display: 1;
   --t-leading-body: 1.6;
+  /* Readable on-colors + shadow for un-themed storefronts (a store with no active
+     theme never gets cssVars.ts). Text drawn on a brand-coloured fill falls back to
+     Nuxt UI's inverted text so it stays legible; shadow collapses to none. Themed
+     stores override all of these in :root via tokensToCssVars. */
+  --t-on-primary: var(--ui-text-inverted);
+  --t-on-secondary: var(--ui-text-inverted);
+  --t-on-accent: var(--ui-text-inverted);
+  --t-shadow: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Editorial storefront system ("Atelier"). Minimal, photography-led, palette-
+   resilient: structure is ink-on-paper hairlines + space + restrained type, so a
+   shop reads considered regardless of how loud its tenant palette is. These derive
+   from --ui-text/--ui-bg, so they track each tenant's ink/paper automatically and
+   stay quiet even when --ui-primary/--t-accent is vivid. Storefront surfaces only.
+   ──────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Hairline rule — ink at low opacity, NOT the tenant border (which can be a
+     saturated colour). The primary structural device of the editorial layout. */
+  --t-rule: color-mix(in oklab, var(--ui-text) 13%, transparent);
+  --t-rule-strong: color-mix(in oklab, var(--ui-text) 22%, transparent);
+  /* A barely-there paper tint for the rare recessed band (footer/newsletter),
+     derived from ink so it never introduces a competing hue. */
+  --t-paper-2: color-mix(in oklab, var(--ui-text) 3.5%, var(--ui-bg));
+}
+
+/* Accessibility: honour reduced-motion everywhere. The marketing reveals/settle
+   animations have static end-states, so this simply lands them instantly. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

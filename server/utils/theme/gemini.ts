@@ -7,8 +7,11 @@ import {
   ALLOWED_LAYOUT,
   ALLOWED_MOOD,
   ALLOWED_PRODUCT_CARD,
-  ALLOWED_SECTION,
 } from '~~/shared/types/theme'
+// Generation offers only the Phase-1 renderable sections so a freshly-generated theme
+// always composes a complete page. The richer image-backed catalog is authored by the
+// dedicated two-pass compose endpoint (Phase 4), not this once-per-store token call.
+import { DEFAULT_SECTION_ORDER } from '~~/shared/types/template'
 
 export interface ThemeImage {
   mimeType: string
@@ -76,7 +79,7 @@ const RESPONSE_SCHEMA = {
         hero: { type: 'string', enum: [...ALLOWED_HERO] },
         productCard: { type: 'string', enum: [...ALLOWED_PRODUCT_CARD] },
         cardHover: { type: 'string', enum: [...ALLOWED_CARD_HOVER] },
-        sectionOrder: { type: 'array', items: { type: 'string', enum: [...ALLOWED_SECTION] } },
+        sectionOrder: { type: 'array', items: { type: 'string', enum: [...DEFAULT_SECTION_ORDER] } },
       },
       required: ['layout', 'hero', 'productCard', 'cardHover'],
     },
