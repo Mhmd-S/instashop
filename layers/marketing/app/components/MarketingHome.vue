@@ -58,8 +58,7 @@ const steps = [
               </span>
 
               <h1 class="mt-6 text-[clamp(2.5rem,4.6vw,3.6rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-ink text-balance">
-                Turn your Instagram into a
-                <span class="text-ink-subtle">website.</span>
+                Turn your Instagram into a website.
               </h1>
 
               <p class="mt-6 max-w-[42ch] text-[clamp(1.125rem,1.4vw,1.375rem)] leading-[1.55] text-ink-muted">
