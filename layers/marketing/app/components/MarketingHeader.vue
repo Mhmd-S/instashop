@@ -56,7 +56,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
           color="neutral"
           variant="ghost"
           size="md"
-          class="hidden px-4 py-2 font-medium text-primary ring-1 ring-default bg-white/70 hover:bg-white hover:text-primary sm:inline-flex"
+          class="hidden px-4 py-2 min-h-11 font-medium text-primary ring-1 ring-default bg-white/70 hover:bg-white hover:text-primary sm:inline-flex"
         />
         <UButton
           :to="adminUrl('/signup')"
@@ -64,10 +64,10 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
           label="Sign up"
           color="primary"
           size="md"
-          class="px-4 py-2 font-medium shadow-card"
+          class="px-4 py-2 min-h-11 font-medium shadow-card"
         />
         <UDropdownMenu :items="menuItems" :ui="{ content: 'w-48' }" class="lg:hidden">
-          <UButton icon="i-lucide-menu" color="neutral" variant="ghost" size="sm" aria-label="Menu" />
+          <UButton icon="i-lucide-menu" color="neutral" variant="ghost" size="sm" aria-label="Menu" class="size-11 justify-center" />
         </UDropdownMenu>
       </div>
     </UContainer>

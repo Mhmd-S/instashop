@@ -34,7 +34,7 @@ const kinds = ['import', 'brand', 'checkout'] as const
 const features = FEATURES.slice(0, 3).map((f, i) => ({ ...f, kind: kinds[i]! }))
 
 const steps = [
-  { icon: 'i-lucide-instagram', time: '30 seconds', title: 'Connect', body: "Link Instagram in two taps and we'll pull in your posts. We can't read your messages or modify your posts." },
+  { icon: 'i-lucide-instagram', time: '30 seconds', title: 'Connect', body: "Link Instagram in two taps and we'll pull in your posts." },
   { icon: 'i-lucide-mouse-pointer-click', time: '2 minutes', title: 'Review', body: 'Our AI finds the products in your posts and adds them to your site for you — you just review and tweak.' },
   { icon: 'i-lucide-rocket', time: 'One click', title: 'Sell', body: 'Publish, share one link, and take card payments from order one.' },
 ]
@@ -45,29 +45,24 @@ const steps = [
     <MarketingHeader />
 
     <main class="relative z-10 flex-1">
-      <!-- Hero: copy flush-left, a vivid Instagram-gradient flame bleeding off the
-           right edge — the page's one big gradient moment (the hero "swoosh"). -->
+      <!-- Hero: Stripe-style two-column — flush-left copy, and the generated storefront
+           demo floating on the weaved-gradient stage on the right. -->
       <section class="relative overflow-hidden">
-        <!-- The flame: an IG-hued bloom anchored top-right, off past the viewport edge,
-             masked so it dissolves into the off-white page well before the copy.
-             Purely decorative. -->
-        <div class="hero-flame" aria-hidden="true" />
-
         <UContainer class="relative">
-          <div class="grid grid-cols-1 items-center gap-10 py-12 lg:grid-cols-2 lg:gap-8 lg:py-20">
-            <!-- Copy, flush-left -->
+          <div class="grid items-center gap-10 py-12 lg:grid-cols-2 lg:gap-12 lg:py-24">
+            <!-- Copy -->
             <div class="relative z-10 max-w-xl">
               <span class="inline-flex items-center gap-2 rounded-full border border-default bg-white px-3 py-1 text-cap font-medium uppercase tracking-[0.08em] text-ink-subtle">
                 <span class="size-1.5 rounded-full" :style="{ background: 'var(--gradient-ig)' }" />
                 Instagram → storefront
               </span>
 
-              <h1 class="mt-5 text-hero font-semibold text-balance">
+              <h1 class="mt-6 text-[clamp(2.5rem,4.6vw,3.6rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-ink text-balance">
                 Turn your Instagram into a
-                <span class="bg-clip-text text-transparent" :style="{ backgroundImage: 'var(--gradient-ig)' }">website.</span>
+                <span class="text-ink-subtle">website.</span>
               </h1>
 
-              <p class="mt-6 max-w-[42ch] text-lead text-ink-muted">
+              <p class="mt-6 max-w-[42ch] text-[clamp(1.125rem,1.4vw,1.375rem)] leading-[1.55] text-ink-muted">
                 Paste your page — we turn your posts into products and match your vibe automatically.
                 Real checkout, your own brand, ready in minutes.
               </p>
@@ -91,7 +86,9 @@ const steps = [
               </form>
               <p class="mt-4 text-cap text-ink-subtle">Free to start · No card required · No code</p>
             </div>
-            <!-- right column intentionally empty on lg: the flame carries it -->
+
+            <!-- Demo: the generated storefront on the weaved-gradient stage -->
+            <MarketingHeroDemo class="w-full lg:-mr-2" />
           </div>
         </UContainer>
       </section>
@@ -107,25 +104,25 @@ const steps = [
 
       <!-- How it works: a light, Stripe-grade beat. The gradient survives as a flowing
            wave (animated canvas) + three hue-stepped numerals — never a wash behind copy. -->
-      <section class="bg-page py-20 lg:py-24">
+      <section class="bg-page py-12 lg:py-24">
         <UContainer>
-          <div class="pt-12 lg:pt-16">
-            <!-- editorial header, flush-left, two-tone -->
+          <div>
+            <!-- editorial header, centered, two-tone (matches the showcase section headers) -->
             <Reveal>
-              <div class="max-w-2xl">
+              <div class="mx-auto max-w-2xl text-center">
                 <p class="text-cap font-medium uppercase tracking-[0.12em] text-ink-subtle">How it works</p>
-                <h2 class="mt-4 text-h2 font-semibold text-ink text-balance">
+                <h2 class="mt-3 text-h2 font-semibold text-ink text-balance">
                   From feed to checkout
                   <span class="text-ink-subtle">in minutes.</span>
                 </h2>
-                <p class="mt-4 max-w-(--prose-measure) text-lead text-ink-muted">
+                <p class="mx-auto mt-4 max-w-xl text-lead text-ink-muted">
                   Three steps, start to first sale — no code, no waiting on a designer.
                 </p>
               </div>
             </Reveal>
 
             <!-- desktop: the three numerals ride ON the flowing wave; details sit beneath -->
-            <div class="mt-12 hidden sm:block lg:mt-16">
+            <div class="mt-8 hidden sm:block lg:mt-10">
               <!-- numerals row, with the wave flowing through them (behind) -->
               <div class="relative">
                 <MarketingWave class="pointer-events-none absolute inset-x-0 top-1/2 h-52 -translate-y-1/2 lg:h-60" />
@@ -154,7 +151,7 @@ const steps = [
             </div>
 
             <!-- mobile: stacked, joined by a vertical gradient thread -->
-            <ol class="relative mt-12 space-y-9 sm:hidden">
+            <ol class="relative mt-8 space-y-9 sm:hidden">
               <span
                 class="absolute bottom-6 left-[1.05rem] top-6 w-px opacity-60"
                 :style="{ background: 'var(--gradient-ig)' }"
@@ -192,38 +189,58 @@ const steps = [
         ]"
       />
 
-      <!-- Closing CTA: the second and final gradient moment -->
-      <section class="relative overflow-hidden bg-immersion">
-        <div
-          class="pointer-events-none absolute inset-0 opacity-45 blur-[90px]"
-          :style="{
-            background: 'var(--gradient-ig-halo)',
-            maskImage: 'radial-gradient(70% 80% at 50% 30%, black, transparent)',
-          }"
-        />
-        <UContainer class="relative py-20 text-center lg:py-28">
-          <h2 class="mx-auto max-w-xl text-hero font-semibold text-white text-balance">Your shop is one paste away.</h2>
-          <p class="mx-auto mt-5 max-w-md text-lead text-white/70">
-            Connect your account and open your shop in minutes — free to start.
-          </p>
-          <form class="mx-auto mt-9 flex max-w-md flex-col gap-3 sm:flex-row" @submit.prevent="submit">
-            <UInput
-              v-model="handle"
-              placeholder="instagram.com/yourshop"
-              icon="i-lucide-at-sign"
-              size="xl"
-              class="flex-1"
-            />
-            <UButton
-              type="submit"
-              label="Get started"
-              color="primary"
-              size="xl"
-              trailing-icon="i-lucide-arrow-right"
-              class="justify-center whitespace-nowrap shadow-float transition duration-200 ease-stripe hover:-translate-y-px"
-            />
-          </form>
-          <p class="mt-4 text-cap text-white/50">Free to start · No card required · No code</p>
+      <!-- Closing CTA: the page's final gradient moment, on the same gradient-image stage
+           as the showcase sections — but the signup copy + form float on it in place of a
+           product window. The neon-twirl backdrop (a luminous ribbon on black) keeps this
+           the home's one dark beat. -->
+      <section class="pb-20 lg:pb-28">
+        <UContainer>
+          <Reveal :delay="80">
+            <div class="stage relative isolate overflow-hidden rounded-mock bg-immersion px-6 py-20 text-center shadow-float sm:px-10 lg:py-28">
+              <!-- neon-twirl backdrop + a soft center scrim so the copy reads crisply while
+                   the ribbon glows around the frame edges. -->
+              <div class="absolute inset-0 -z-10 overflow-hidden rounded-mock" aria-hidden="true">
+                <img src="/landing/twirl-neon.jpeg" alt="" class="size-full object-cover">
+                <div
+                  class="absolute inset-0"
+                  style="background: radial-gradient(75% 82% at 50% 50%, rgba(17,8,34,0.86), rgba(17,8,34,0.46) 60%, rgba(17,8,34,0.12) 100%)"
+                />
+                <!-- re-darken the lower band: on the wide desktop crop the ribbon's lower
+                     lobe re-enters where the radial scrim has faded, so the trust line keeps
+                     its contrast while the neon still glows around the upper edges. -->
+                <div
+                  class="absolute inset-0"
+                  style="background: linear-gradient(to bottom, transparent 70%, rgba(17,8,34,0.65))"
+                />
+              </div>
+
+              <h2 class="mx-auto max-w-xl text-hero font-semibold text-white text-balance">
+                Your shop is
+                <span class="text-white/60">one paste away.</span>
+              </h2>
+              <p class="mx-auto mt-5 max-w-xl text-lead text-white/80">
+                Connect your account and open your shop in minutes — free to start.
+              </p>
+              <form class="mx-auto mt-9 flex max-w-md flex-col gap-3 sm:flex-row" @submit.prevent="submit">
+                <UInput
+                  v-model="handle"
+                  placeholder="instagram.com/yourshop"
+                  icon="i-lucide-at-sign"
+                  size="xl"
+                  class="flex-1"
+                />
+                <UButton
+                  type="submit"
+                  label="Get started"
+                  color="primary"
+                  size="xl"
+                  trailing-icon="i-lucide-arrow-right"
+                  class="justify-center whitespace-nowrap shadow-float transition duration-200 ease-stripe hover:-translate-y-px"
+                />
+              </form>
+              <p class="mt-4 text-cap text-white/75">Free to start · No card required · No code</p>
+            </div>
+          </Reveal>
         </UContainer>
       </section>
     </main>
@@ -231,56 +248,3 @@ const steps = [
     <MarketingFooter :cta="false" />
   </div>
 </template>
-
-<style scoped>
-/* Hero flame: a vivid Instagram-gradient bloom anchored to the top-right, bleeding
-   off the viewport edge — the page's one big gradient moment (Stripe's hero swoosh,
-   in IG hues). Masked so it melts into the off-white page before it reaches the copy.
-   Drifts slowly; reduced-motion lands it static. */
-.hero-flame {
-  position: absolute;
-  top: -16%;
-  right: -6%;
-  bottom: -16%;
-  width: 64%;
-  background:
-    radial-gradient(46% 50% at 80% 14%, #fcaf45 0%, transparent 60%),
-    radial-gradient(46% 48% at 96% 32%, #f77737 0%, transparent 58%),
-    radial-gradient(52% 56% at 72% 50%, #e1306c 0%, transparent 60%),
-    radial-gradient(52% 62% at 90% 70%, #c13584 0%, transparent 62%),
-    radial-gradient(56% 66% at 66% 92%, #833ab4 0%, transparent 66%);
-  filter: blur(36px) saturate(1.14);
-  -webkit-mask-image: radial-gradient(118% 104% at 100% 36%, #000 28%, transparent 72%);
-  mask-image: radial-gradient(118% 104% at 100% 36%, #000 28%, transparent 72%);
-  transform: translateZ(0);
-  animation: heroFlameDrift 26s var(--ease-soft, ease-in-out) infinite alternate;
-  will-change: transform;
-}
-@keyframes heroFlameDrift {
-  0% {
-    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  }
-  100% {
-    transform: translate3d(-2.5%, 2%, 0) rotate(-3deg) scale(1.06);
-  }
-}
-/* On mobile the copy stacks full-width — pull the flame up into a top-right accent
-   and soften it so it never washes the text. */
-@media (max-width: 1023px) {
-  .hero-flame {
-    top: -24%;
-    right: -30%;
-    bottom: auto;
-    height: 56%;
-    width: 96%;
-    opacity: 0.82;
-    -webkit-mask-image: radial-gradient(94% 100% at 100% 0%, #000 16%, transparent 64%);
-    mask-image: radial-gradient(94% 100% at 100% 0%, #000 16%, transparent 64%);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-flame {
-    animation: none;
-  }
-}
-</style>

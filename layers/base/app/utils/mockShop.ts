@@ -22,6 +22,12 @@ export interface MockShop {
   products: MockProduct[]
   /** The seller's IG feed — the "before": product + studio shots, real photos. */
   feed: string[]
+  /** IG profile stats shown in the marketing hero's "before" feed tile. */
+  ig: {
+    posts: string
+    followers: string
+    following: string
+  }
 }
 
 export const MOCK_SHOP: MockShop = {
@@ -45,4 +51,9 @@ export const MOCK_SHOP: MockShop = {
     '/marketing/sage-wheel.jpg',
     '/marketing/sage-plates.jpg',
   ],
+  ig: {
+    posts: '128',
+    followers: '12.4k',
+    following: '312',
+  },
 }

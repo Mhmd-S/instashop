@@ -71,6 +71,14 @@
   --ease-stripe: cubic-bezier(0.2, 1, 0.2, 1);
 }
 
+/* Defensive global guard: never let an over-wide child (a stray fixed/min width
+   in a section) produce a horizontal scrollbar on mobile. `clip` — not `hidden`
+   — because it does not establish a scroll container, so sticky positioning
+   (the marketing header) keeps working against the viewport. */
+html {
+  overflow-x: clip;
+}
+
 /* Density spacing + typography defaults so the storefront's var-driven utilities
    resolve even when a store has no active theme. Themed stores override these in
    :root via cssVars.ts (tokensToCssVars). */

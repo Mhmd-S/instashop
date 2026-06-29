@@ -40,7 +40,7 @@ const nav = ['Dashboard', 'Orders', 'Products', 'Payments', 'Settings']
 </script>
 
 <template>
-  <section class="py-12 lg:py-18">
+  <section class="py-12 lg:py-24">
     <UContainer>
       <Reveal v-if="eyebrow || title || lead">
         <div class="mx-auto max-w-2xl text-center">
@@ -65,7 +65,7 @@ const nav = ['Dashboard', 'Orders', 'Products', 'Payments', 'Settings']
           <!-- The real "post → shop" hero piece: the generated storefront window with the
                seller's IG feed tile flowing into it, floating on the gradient stage. -->
           <div v-if="variant === 'storefront'"
-            class="relative flex h-[50vh] items-center justify-center mx-auto w-full min-w-2xl pb-6 sm:pb-2">
+            class="relative flex items-center justify-center mx-auto w-full pb-6 sm:pb-2 lg:h-[50vh]">
             <HeroMockStack class="w-full" />
           </div>
 

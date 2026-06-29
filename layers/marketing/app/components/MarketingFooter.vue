@@ -70,7 +70,7 @@ const columns: { title: string; links: { label: string; to: string; external?: b
           <h3 class="text-xs font-semibold uppercase tracking-wide text-dimmed">{{ col.title }}</h3>
           <ul class="mt-3 space-y-2 text-sm">
             <li v-for="link in col.links" :key="link.label">
-              <NuxtLink :to="link.to" :external="link.external" class="text-muted hover:text-highlighted">
+              <NuxtLink :to="link.to" :external="link.external" class="block py-2.5 text-muted hover:text-highlighted">
                 {{ link.label }}
               </NuxtLink>
             </li>
