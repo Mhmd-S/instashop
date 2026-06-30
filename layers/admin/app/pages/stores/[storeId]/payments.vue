@@ -13,15 +13,24 @@ const backLabel = computed(() => (ret.value ? 'Back to setup' : 'Dashboard'))
 </script>
 
 <template>
-  <UContainer class="max-w-2xl py-2">
+  <div>
+    <!-- Contextual back-link only when launched from the onboarding wizard; the
+         sidebar handles dashboard navigation otherwise. -->
     <UButton
-      :to="backTo" icon="i-lucide-arrow-left" :label="backLabel"
-      variant="link" color="neutral" size="sm" class="-ml-2.5"
+      v-if="ret"
+      :to="backTo" variant="link" color="neutral" size="xs"
+      icon="i-lucide-arrow-left" :label="backLabel" class="-ml-2 mb-2"
     />
-    <h1 class="text-2xl font-bold text-highlighted mt-1">Payments</h1>
+
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-ink">Payments</h1>
+        <p class="mt-1 text-sm text-ink-muted">Accept card payments on your storefront via Stripe.</p>
+      </div>
+    </div>
 
     <!-- Shared with the onboarding wizard; standalone (no return-path) lands Stripe
          back on this page. -->
     <PaymentsSetup :store-id="storeId" :return-path="ret ?? undefined" class="mt-6" />
-  </UContainer>
+  </div>
 </template>

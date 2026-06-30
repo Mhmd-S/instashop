@@ -381,11 +381,11 @@ defineExpose({ save })
 
 <template>
   <div>
-    <div v-if="pending && !data" class="py-16 grid place-items-center text-dimmed">
+    <div v-if="pending && !data" class="py-16 grid place-items-center text-ink-subtle">
       <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin" />
     </div>
     <template v-else>
-      <p class="text-xs text-muted">
+      <p class="text-xs text-ink-muted">
         Version {{ version ?? '—' }} · derived from your logo &amp; posts — edit anything below.
       </p>
 
@@ -395,15 +395,15 @@ defineExpose({ save })
       <UAlert v-if="rationale" class="mt-4" color="neutral" variant="soft" icon="i-lucide-sparkles" title="Why this design" :description="rationale" />
 
       <!-- Logo + generate (full width — the source action that re-derives everything). -->
-      <UCard class="mt-4">
+      <div class="mt-4 rounded-xl border border-default bg-white p-5 sm:p-6">
         <div class="flex flex-wrap items-center gap-4">
-          <div class="size-16 shrink-0 rounded-lg border border-default bg-muted overflow-hidden grid place-items-center">
+          <div class="size-16 shrink-0 rounded-lg border border-default bg-black/5 overflow-hidden grid place-items-center">
             <img v-if="logoUrl" :src="logoUrl" alt="Logo" class="size-full object-contain">
-            <UIcon v-else name="i-lucide-image" class="size-6 text-dimmed" />
+            <UIcon v-else name="i-lucide-image" class="size-6 text-ink-subtle" />
           </div>
           <div class="min-w-0 flex-1">
-            <p class="font-medium text-highlighted">Brand logo</p>
-            <p class="text-xs text-muted">
+            <p class="font-medium text-ink">Brand logo</p>
+            <p class="text-xs text-ink-muted">
               {{ logoSource === 'manual' ? 'Custom upload' : logoSource === 'profile_picture' ? 'From Instagram' : 'No logo yet' }}
               — its dominant color seeds your palette.
             </p>
@@ -413,7 +413,7 @@ defineExpose({ save })
           </UButton>
           <UButton :loading="generating" :disabled="generating" icon="i-lucide-refresh-cw" color="primary" label="Regenerate theme" @click="generate" />
         </div>
-      </UCard>
+      </div>
 
       <!-- HERO & LANDING IMAGE: the storefront's lead photo. Picked automatically
            (AI-scored from branding posts & product photos); the owner can re-pick or
@@ -426,8 +426,8 @@ defineExpose({ save })
                 <UIcon name="i-lucide-image" class="size-5" />
               </div>
               <div>
-                <h3 class="font-semibold text-highlighted">Hero &amp; landing image</h3>
-                <p class="mt-0.5 text-sm text-muted">Your storefront's first impression — picked from your best photo.</p>
+                <h3 class="font-semibold text-ink">Hero &amp; landing image</h3>
+                <p class="mt-0.5 text-sm text-ink-muted">Your storefront's first impression — picked from your best photo.</p>
               </div>
             </div>
             <UButton :loading="heroPicking" icon="i-lucide-sparkles" color="primary" variant="soft" size="sm" label="Auto-pick hero" @click="autoPickHero" />
@@ -437,9 +437,9 @@ defineExpose({ save })
         <UAlert v-if="heroErr" color="error" variant="soft" icon="i-lucide-circle-alert" :description="heroErr" class="mb-4" />
 
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div class="aspect-video overflow-hidden rounded-lg border border-default bg-muted sm:w-56 sm:shrink-0">
+          <div class="aspect-video overflow-hidden rounded-lg border border-default bg-black/5 sm:w-56 sm:shrink-0">
             <img v-if="currentHero?.public_url" :src="currentHero.public_url" alt="Current hero image" class="size-full object-cover">
-            <div v-else class="grid size-full place-items-center text-dimmed"><UIcon name="i-lucide-image-off" class="size-7" /></div>
+            <div v-else class="grid size-full place-items-center text-ink-subtle"><UIcon name="i-lucide-image-off" class="size-7" /></div>
           </div>
           <div class="min-w-0 flex-1">
             <template v-if="currentHero">
@@ -447,12 +447,12 @@ defineExpose({ save })
                 <UBadge :label="currentHero.source === 'product' ? 'From a product photo' : 'From your posts'" color="neutral" variant="subtle" size="sm" />
                 <UBadge v-if="typeof currentHero.hero_score === 'number'" :label="`AI match ${currentHero.hero_score}/100`" color="primary" variant="subtle" size="sm" />
               </div>
-              <p v-if="currentHero.hero_reason" class="mt-2 text-sm text-muted">
-                <span class="font-medium text-highlighted">Why this image:</span> {{ currentHero.hero_reason }}
+              <p v-if="currentHero.hero_reason" class="mt-2 text-sm text-ink-muted">
+                <span class="font-medium text-ink">Why this image:</span> {{ currentHero.hero_reason }}
               </p>
-              <p v-else class="mt-2 text-sm text-muted">This image leads your storefront. Auto-pick again, or choose another below.</p>
+              <p v-else class="mt-2 text-sm text-ink-muted">This image leads your storefront. Auto-pick again, or choose another below.</p>
             </template>
-            <p v-else class="text-sm text-muted">
+            <p v-else class="text-sm text-ink-muted">
               No hero image yet. Auto-pick one from your photos, or connect Instagram for lifestyle shots. Without a hero, your storefront falls back to a clean text-led header.
             </p>
           </div>
@@ -460,7 +460,7 @@ defineExpose({ save })
 
         <!-- Override: pick a different imported post as the hero. -->
         <div v-if="heroCandidates.length" class="mt-5">
-          <p class="text-xs font-medium uppercase tracking-wide text-dimmed">Or choose another</p>
+          <p class="text-xs font-medium uppercase tracking-wide text-ink-subtle">Or choose another</p>
           <ul class="mt-2 flex gap-2 overflow-x-auto pb-1">
             <li v-for="a in heroCandidates" :key="a.id" class="shrink-0">
               <button
@@ -488,11 +488,11 @@ defineExpose({ save })
           <div class="grid gap-4 sm:grid-cols-2" :class="embedded ? '' : 'lg:grid-cols-1'">
             <!-- Colors -->
             <UCard>
-              <template #header><h3 class="font-semibold text-highlighted">Colors</h3></template>
+              <template #header><h3 class="font-semibold text-ink">Colors</h3></template>
               <div class="space-y-2.5">
                 <div v-for="c in VISIBLE_COLORS" :key="c.key" class="flex items-center gap-3">
                   <input v-model="colors[c.key]" type="color" :aria-label="c.label" class="size-9 shrink-0 cursor-pointer rounded-lg border border-default bg-transparent p-0.5 transition hover:border-primary/60">
-                  <span class="w-20 text-sm text-muted">{{ c.label }}</span>
+                  <span class="w-20 text-sm text-ink-muted">{{ c.label }}</span>
                   <UInput v-model="colors[c.key]" size="sm" class="flex-1 font-mono" />
                   <UBadge v-if="colorContrast[c.key]" :color="colorContrast[c.key]!.color" variant="soft" size="sm" class="shrink-0" :label="colorContrast[c.key]!.label" />
                 </div>
@@ -501,7 +501,7 @@ defineExpose({ save })
 
             <!-- Typography & style -->
             <UCard>
-              <template #header><h3 class="font-semibold text-highlighted">Typography &amp; style</h3></template>
+              <template #header><h3 class="font-semibold text-ink">Typography &amp; style</h3></template>
               <div class="space-y-4">
                 <UFormField label="Heading font"><USelect v-model="heading" :items="opts(ALLOWED_HEADING_FONTS)" class="w-full" /></UFormField>
                 <UFormField label="Body font"><USelect v-model="body" :items="opts(ALLOWED_BODY_FONTS)" class="w-full" /></UFormField>
@@ -522,8 +522,8 @@ defineExpose({ save })
           <UCard>
             <template #header>
               <div class="flex flex-wrap items-center justify-between gap-2">
-                <h3 class="font-semibold text-highlighted">Layout &amp; structure</h3>
-                <span class="text-xs text-dimmed">Chosen from your posts — override any of it</span>
+                <h3 class="font-semibold text-ink">Layout &amp; structure</h3>
+                <span class="text-xs text-ink-subtle">Chosen from your posts — override any of it</span>
               </div>
             </template>
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4" :class="embedded ? '' : 'lg:grid-cols-2'">
@@ -542,7 +542,7 @@ defineExpose({ save })
           <UCard>
             <template #header>
               <div class="flex flex-wrap items-center justify-between gap-2">
-                <h3 class="font-semibold text-highlighted">Preview</h3>
+                <h3 class="font-semibold text-ink">Preview</h3>
                 <UButtonGroup size="xs">
                   <UButton
                     icon="i-lucide-monitor"
@@ -566,12 +566,12 @@ defineExpose({ save })
                  the onboarding storefront-preview frame. -->
             <div class="mx-auto transition-[max-width] duration-300 ease-out" :class="device === 'mobile' ? 'max-w-100' : 'max-w-none'">
               <div class="overflow-hidden rounded-xl border border-default shadow-sm">
-                <div class="flex items-center gap-1.5 border-b border-default bg-elevated px-3 py-2">
+                <div class="flex items-center gap-1.5 border-b border-default bg-black/5 px-3 py-2">
                   <span class="size-2.5 rounded-full bg-error/40" />
                   <span class="size-2.5 rounded-full bg-warning/40" />
                   <span class="size-2.5 rounded-full bg-success/40" />
-                  <div class="mx-2 flex-1 truncate rounded-md bg-muted px-2.5 py-1 text-center text-[0.7rem] text-dimmed">{{ previewHost }}</div>
-                  <UIcon :name="device === 'mobile' ? 'i-lucide-smartphone' : 'i-lucide-monitor'" class="size-3.5 shrink-0 text-dimmed" />
+                  <div class="mx-2 flex-1 truncate rounded-md bg-black/5 px-2.5 py-1 text-center text-[0.7rem] text-ink-subtle">{{ previewHost }}</div>
+                  <UIcon :name="device === 'mobile' ? 'i-lucide-smartphone' : 'i-lucide-monitor'" class="size-3.5 shrink-0 text-ink-subtle" />
                 </div>
 
                 <!-- Storefront slice -->

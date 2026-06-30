@@ -23,7 +23,6 @@ const columns: { title: string; links: { label: string; to: string; external?: b
     title: 'Company',
     links: [
       { label: 'Manifesto', to: '/manifesto' },
-      { label: 'Customers', to: '/customers' },
       { label: 'Blog', to: '/blog' },
     ],
   },

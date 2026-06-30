@@ -151,7 +151,7 @@ function onDeleted() {
 
 <template>
   <div>
-    <div class="mb-5 rounded-xl border border-default divide-y divide-default">
+    <div class="mb-5 rounded-xl border border-default bg-white divide-y divide-default">
       <div class="p-4">
         <StoreCurrencySelect :store-id="storeId" @changed="() => refresh()" />
       </div>
@@ -162,29 +162,29 @@ function onDeleted() {
 
     <UAlert v-if="err" color="error" variant="soft" :title="err" icon="i-lucide-circle-alert" class="mb-4" />
 
-    <div v-if="pending && !products.length" class="py-10 grid place-items-center text-dimmed">
+    <div v-if="pending && !products.length" class="py-10 grid place-items-center text-ink-subtle">
       <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin" />
     </div>
 
-    <div v-else-if="!products.length" class="rounded-lg border border-default text-center py-10">
-      <UIcon name="i-lucide-package" class="size-10 text-dimmed mx-auto" />
-      <p class="mt-3 text-muted">No products yet. Import from Instagram, or add one by hand.</p>
+    <div v-else-if="!products.length" class="rounded-xl border border-default bg-white text-center py-12">
+      <UIcon name="i-lucide-package" class="size-8 text-ink-subtle mx-auto" />
+      <p class="mt-2 text-sm text-ink-muted">No products yet. Import from Instagram, or add one by hand.</p>
       <UButton class="mt-4" icon="i-lucide-plus" :loading="creating" label="Add a product" @click="addProduct" />
     </div>
 
     <template v-else>
       <ul class="space-y-2">
-        <li v-for="p in rows" :key="p.id" class="rounded-lg border border-default overflow-hidden">
+        <li v-for="p in rows" :key="p.id" class="rounded-xl border border-default bg-white overflow-hidden">
           <div class="flex items-center gap-3 p-3">
             <button type="button" class="flex items-center gap-3 min-w-0 flex-1 text-left" @click="toggle(p.id)">
-              <UIcon :name="expanded === p.id ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 shrink-0 text-dimmed" />
+              <UIcon :name="expanded === p.id ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 shrink-0 text-ink-subtle" />
               <img v-if="p.image_url" :src="p.image_url" :alt="p.title" class="size-10 rounded object-cover border border-default shrink-0">
-              <div v-else class="size-10 rounded bg-muted border border-default grid place-items-center shrink-0">
-                <UIcon name="i-lucide-image" class="size-4 text-dimmed" />
+              <div v-else class="size-10 rounded bg-black/5 border border-default grid place-items-center shrink-0">
+                <UIcon name="i-lucide-image" class="size-4 text-ink-subtle" />
               </div>
               <div class="min-w-0">
-                <p class="font-medium text-highlighted truncate">{{ p.title }}</p>
-                <p class="text-xs text-muted">{{ formatPrice(p.price_minor, p.currency) }}</p>
+                <p class="font-medium text-ink truncate">{{ p.title }}</p>
+                <p class="text-xs text-ink-muted">{{ formatPrice(p.price_minor, p.currency) }}</p>
               </div>
             </button>
             <UBadge v-if="p.needs_review" color="warning" variant="subtle" size="xs" label="Review" />
@@ -204,7 +204,7 @@ function onDeleted() {
               @click="quickDelete(p)"
             />
           </div>
-          <div v-if="expanded === p.id" class="border-t border-default p-4 bg-elevated/30">
+          <div v-if="expanded === p.id" class="border-t border-default p-4 bg-black/5">
             <ProductEditor
               :store-id="storeId"
               :product-id="p.id"

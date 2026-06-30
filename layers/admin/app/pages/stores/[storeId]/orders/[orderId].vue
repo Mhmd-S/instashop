@@ -109,17 +109,24 @@ async function doRefund() {
     refunding.value = false
   }
 }
+
+function pill(s: string) {
+  if (['paid', 'active', 'fulfilled', 'succeeded'].includes(s)) return 'bg-emerald-100 text-emerald-700'
+  if (['pending', 'unpaid', 'processing'].includes(s)) return 'bg-amber-100 text-amber-700'
+  if (s === 'failed') return 'bg-red-100 text-red-700'
+  return 'bg-ink/10 text-ink-muted'
+}
 </script>
 
 <template>
   <div v-if="order" class="max-w-2xl">
     <UButton :to="`/stores/${storeId}/orders`" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" label="Orders" class="-ml-2 mb-2" />
 
-    <div class="flex items-center justify-between gap-4">
-      <h1 class="text-2xl font-bold text-highlighted">{{ order.order_number }}</h1>
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <h1 class="text-2xl font-bold tracking-tight text-ink">{{ order.order_number }}</h1>
       <div class="flex gap-2">
-        <UBadge color="neutral" variant="subtle" class="capitalize" :label="order.status" />
-        <UBadge color="neutral" variant="subtle" class="capitalize" :label="order.payment_status" />
+        <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize" :class="pill(order.status)">{{ order.status }}</span>
+        <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize" :class="pill(order.payment_status)">{{ order.payment_status }}</span>
       </div>
     </div>
 
@@ -127,7 +134,7 @@ async function doRefund() {
     <div class="mt-5 flex flex-wrap items-center gap-3">
       <UButton
         v-for="s in nextStatuses" :key="s"
-        color="neutral" variant="outline" size="sm" class="capitalize"
+        color="neutral" variant="soft" size="sm" class="capitalize"
         :disabled="busy" :label="`Mark ${s}`"
         @click="transition(s)"
       />
@@ -139,7 +146,7 @@ async function doRefund() {
       />
       <UButton
         v-if="canRefund"
-        color="error" variant="outline" size="sm" icon="i-lucide-rotate-ccw"
+        color="error" variant="soft" size="sm" icon="i-lucide-rotate-ccw"
         :disabled="busy" label="Refund"
         @click="refundOpen = true"
       />
@@ -148,67 +155,65 @@ async function doRefund() {
     <UAlert v-if="okMsg" color="success" variant="soft" icon="i-lucide-check" :title="okMsg" class="mt-3" />
 
     <!-- customer -->
-    <UCard class="mt-8">
+    <div class="mt-8 rounded-xl border border-default bg-white p-5 sm:p-6">
       <div class="grid sm:grid-cols-2 gap-6 text-sm">
         <div>
-          <h2 class="font-medium text-highlighted">Contact</h2>
-          <p class="text-muted mt-1">{{ order.contact_name || '—' }}</p>
-          <p class="text-muted">{{ order.contact_email || '—' }}</p>
-          <p class="text-muted">{{ order.contact_phone || '' }}</p>
+          <h2 class="font-medium text-ink">Contact</h2>
+          <p class="text-ink-muted mt-1">{{ order.contact_name || '—' }}</p>
+          <p class="text-ink-muted">{{ order.contact_email || '—' }}</p>
+          <p class="text-ink-muted">{{ order.contact_phone || '' }}</p>
         </div>
         <div>
-          <h2 class="font-medium text-highlighted">Shipping</h2>
-          <p class="text-muted mt-1">{{ order.ship_line1 || '—' }}</p>
-          <p v-if="order.ship_line2" class="text-muted">{{ order.ship_line2 }}</p>
-          <p class="text-muted">{{ [order.ship_city, order.ship_region, order.ship_postcode].filter(Boolean).join(', ') }}</p>
-          <p class="text-muted">{{ order.ship_country }}</p>
+          <h2 class="font-medium text-ink">Shipping</h2>
+          <p class="text-ink-muted mt-1">{{ order.ship_line1 || '—' }}</p>
+          <p v-if="order.ship_line2" class="text-ink-muted">{{ order.ship_line2 }}</p>
+          <p class="text-ink-muted">{{ [order.ship_city, order.ship_region, order.ship_postcode].filter(Boolean).join(', ') }}</p>
+          <p class="text-ink-muted">{{ order.ship_country }}</p>
         </div>
       </div>
-      <p v-if="order.customer_note" class="mt-4 text-sm text-default"><span class="font-medium text-highlighted">Note:</span> {{ order.customer_note }}</p>
+      <p v-if="order.customer_note" class="mt-4 text-sm text-ink-muted"><span class="font-medium text-ink">Note:</span> {{ order.customer_note }}</p>
 
       <div v-if="customFields.length" class="mt-4 border-t border-default pt-4">
-        <h2 class="font-medium text-highlighted text-sm">Additional info</h2>
+        <h2 class="font-medium text-ink text-sm">Additional info</h2>
         <dl class="mt-1 space-y-0.5 text-sm">
           <div v-for="a in customFields" :key="a.key" class="flex gap-2">
-            <dt class="text-highlighted">{{ a.label }}:</dt>
-            <dd class="text-muted">{{ formatCheckoutAnswer(a) }}</dd>
+            <dt class="text-ink">{{ a.label }}:</dt>
+            <dd class="text-ink-muted">{{ formatCheckoutAnswer(a) }}</dd>
           </div>
         </dl>
       </div>
-    </UCard>
+    </div>
 
     <!-- items -->
-    <UCard class="mt-6">
+    <div class="mt-6 rounded-xl border border-default bg-white p-5 sm:p-6">
       <ul class="divide-y divide-default text-sm">
         <li v-for="it in items" :key="it.id" class="py-3 first:pt-0 flex items-center justify-between gap-4">
-          <span class="text-default">{{ it.title_snapshot }} <span class="text-muted">× {{ it.quantity }}</span></span>
-          <span class="text-muted">{{ formatPrice(it.line_total_minor, order.currency) }}</span>
+          <span class="text-ink-muted">{{ it.title_snapshot }} <span class="text-ink-subtle">× {{ it.quantity }}</span></span>
+          <span class="text-ink-muted tabular-nums">{{ formatPrice(it.line_total_minor, order.currency) }}</span>
         </li>
       </ul>
       <USeparator class="my-4" />
       <div class="flex items-center justify-between">
-        <span class="text-muted">Total</span>
-        <span class="text-lg font-semibold text-highlighted">{{ formatPrice(order.total_minor, order.currency) }}</span>
+        <span class="text-ink-muted">Total</span>
+        <span class="text-lg font-semibold tabular-nums text-ink">{{ formatPrice(order.total_minor, order.currency) }}</span>
       </div>
-    </UCard>
+    </div>
 
     <!-- timeline -->
-    <UCard v-if="events.length" class="mt-6">
-      <template #header>
-        <h2 class="font-medium text-highlighted">History</h2>
-      </template>
-      <ul class="space-y-1 text-sm text-muted">
+    <div v-if="events.length" class="mt-6 rounded-xl border border-default bg-white p-5 sm:p-6">
+      <h2 class="font-medium text-ink">History</h2>
+      <ul class="mt-3 space-y-1 text-sm text-ink-muted">
         <li v-for="ev in events" :key="ev.id">
           {{ ev.created_at.slice(0, 16).replace('T', ' ') }} — {{ ev.kind }}
           <template v-if="ev.from_value || ev.to_value">({{ ev.from_value }} → {{ ev.to_value }})</template>
         </li>
       </ul>
-    </UCard>
+    </div>
 
     <UModal v-model:open="refundOpen" title="Refund order" :dismissible="!refunding">
       <template #body>
         <div class="space-y-4">
-          <p class="text-sm text-muted">
+          <p class="text-sm text-ink-muted">
             Refunds the buyer via Stripe and reverses your commission proportionally. The payment status
             updates when Stripe confirms.
           </p>

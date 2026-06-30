@@ -1,186 +1,271 @@
 <script setup lang="ts">
+import { formatPrice } from '~~/shared/types/product'
+
 definePageMeta({ surface: 'admin', layout: 'admin', requiresAuth: true })
 
-const { data, refresh } = await useFetch('/api/admin/stores')
-const { storeUrl } = useSurfaceUrls()
-const stores = computed(() => data.value?.stores ?? [])
+const { stores, activeId, active } = useActiveStore()
 
-// Share flow — opens the shop link / QR / bio guide for an existing store.
-const toShare = ref<{ id: string; name: string; subdomain: string } | null>(null)
-const shareOpen = computed({
-  get: () => !!toShare.value,
-  set: (v: boolean) => {
-    if (!v) toShare.value = null
-  },
-})
+// Brand-new users have no store yet — force them straight into onboarding rather than
+// showing a dead-end welcome. Awaiting the (shared, keyed) fetch guarantees the list is
+// resolved before we decide, so this never misfires for users who *do* have stores.
+await useFetch('/api/admin/stores', { key: 'admin-stores' })
+if (!stores.value.length) {
+  await navigateTo('/onboarding')
+}
 
-// Delete flow — type-to-confirm so an owner can't nuke a store by misclick.
-const toDelete = ref<{ id: string; name: string; subdomain: string } | null>(null)
-const confirmText = ref('')
-const deleting = ref(false)
-const delError = ref<string | null>(null)
+// Date range drives the aggregation window.
+const days = ref(7)
+const rangeItems = [
+  { label: 'Last 7 days', value: 7 },
+  { label: 'Last 30 days', value: 30 },
+  { label: 'Last 90 days', value: 90 },
+]
+const rangeLabel = computed(() => rangeItems.find((r) => r.value === days.value)?.label ?? '')
+const rangeMenu = computed(() => [rangeItems.map((r) => ({ label: r.label, onSelect: () => (days.value = r.value) }))])
 
-const deleteOpen = computed({
-  get: () => !!toDelete.value,
-  set: (v: boolean) => {
-    if (!v) toDelete.value = null
-  },
-})
-watch(toDelete, () => {
-  confirmText.value = ''
-  delError.value = null
-})
-const canDelete = computed(
-  () => !!toDelete.value && confirmText.value.trim().toLowerCase() === toDelete.value.subdomain.toLowerCase(),
+// "Compare to previous period" toggle (mirrors the Stripe overview control).
+const compare = ref(true)
+
+interface Metrics {
+  currency: string
+  days: number
+  summary: {
+    grossMinor: number
+    ordersCount: number
+    aovMinor: number
+    pendingMinor: number
+    todayMinor: number
+    yesterdayMinor: number
+    prevGrossMinor: number
+    prevOrdersCount: number
+    prevAovMinor: number
+  }
+  series: { date: string; grossMinor: number; orders: number }[]
+  recent: {
+    id: string
+    order_number: string
+    total_minor: number
+    currency: string
+    payment_status: string
+    status: string
+    contact_name: string | null
+    contact_email: string | null
+    placed_at: string
+  }[]
+}
+
+const { data: metrics } = await useAsyncData<Metrics | null>(
+  'dashboard-metrics',
+  () =>
+    activeId.value
+      ? $fetch<Metrics>(`/api/admin/stores/${activeId.value}/metrics`, { query: { days: days.value } })
+      : Promise.resolve(null),
+  { watch: [activeId, days] },
 )
 
-async function confirmDelete() {
-  if (!toDelete.value || !canDelete.value) return
-  deleting.value = true
-  delError.value = null
-  try {
-    await $fetch(`/api/admin/stores/${toDelete.value.id}`, {
-      method: 'DELETE',
-      body: { confirm: confirmText.value.trim() },
-    })
-    toDelete.value = null
-    await refresh()
-  } catch (e) {
-    delError.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Failed to delete store'
-  } finally {
-    deleting.value = false
-  }
+const cur = computed(() => metrics.value?.currency ?? active.value?.base_currency ?? 'USD')
+function money(minor: number | undefined) {
+  return formatPrice(minor ?? 0, cur.value)
+}
+const sum = computed(() => metrics.value?.summary)
+const todayOrders = computed(() => {
+  const s = metrics.value?.series
+  return s?.length ? s[s.length - 1]!.orders : 0
+})
+
+// Local time stamp under "Gross volume", client-only to avoid hydration drift.
+const nowLabel = ref('')
+onMounted(() => {
+  nowLabel.value = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+})
+
+function pctDelta(now: number, prev: number) {
+  if (!prev) return now > 0 ? 100 : 0
+  return Math.round(((now - prev) / prev) * 100)
+}
+
+const cards = computed(() => {
+  const s = sum.value
+  return [
+    { label: 'Gross volume', value: money(s?.grossMinor), prev: money(s?.prevGrossMinor), delta: pctDelta(s?.grossMinor ?? 0, s?.prevGrossMinor ?? 0) },
+    { label: 'Orders', value: String(s?.ordersCount ?? 0), prev: String(s?.prevOrdersCount ?? 0), delta: pctDelta(s?.ordersCount ?? 0, s?.prevOrdersCount ?? 0) },
+    { label: 'Avg. order value', value: money(s?.aovMinor), prev: money(s?.prevAovMinor), delta: pctDelta(s?.aovMinor ?? 0, s?.prevAovMinor ?? 0) },
+    { label: 'Pending payment', value: money(s?.pendingMinor), prev: null as string | null, delta: null as number | null },
+  ]
+})
+
+function pill(s: string) {
+  if (s === 'paid') return 'bg-emerald-100 text-emerald-700'
+  if (s === 'pending' || s === 'unpaid') return 'bg-amber-100 text-amber-700'
+  if (s === 'failed') return 'bg-red-100 text-red-700'
+  return 'bg-ink/10 text-ink-muted'
 }
 </script>
 
 <template>
   <div>
     <!-- Empty state: a guided welcome that launches the setup wizard. -->
-    <div v-if="!stores.length" class="mx-auto max-w-2xl text-center py-8">
-      <div class="mx-auto mb-5 grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+    <div v-if="!stores.length" class="mx-auto max-w-2xl py-8 text-center">
+      <div class="mx-auto mb-5 grid size-14 place-items-center rounded-2xl text-white shadow-float" :style="{ background: 'var(--gradient-ig)' }">
         <UIcon name="i-lucide-sparkles" class="size-7" />
       </div>
-      <h1 class="text-3xl font-bold text-highlighted">Turn your Instagram into a store</h1>
-      <p class="text-muted mt-2">
+      <h1 class="text-hero font-semibold text-ink text-balance">Turn your Instagram into a store</h1>
+      <p class="mt-3 text-lead text-ink-muted">
         Connect your account, customize the look, and launch a shoppable storefront in minutes.
       </p>
-      <UButton to="/onboarding" size="lg" class="mt-6" icon="i-lucide-plus" label="Get started" />
+      <UButton to="/onboarding" size="lg" class="mt-6 shadow-card" icon="i-lucide-plus" label="Get started" />
 
-      <div class="mt-10 grid gap-4 sm:grid-cols-3 text-left">
-        <div class="rounded-xl border border-default p-4">
-          <UIcon name="i-lucide-instagram" class="size-5 text-primary" />
-          <p class="font-medium text-highlighted mt-2">Import posts</p>
-          <p class="text-sm text-muted mt-0.5">AI turns your Instagram posts into draft products.</p>
+      <div class="mt-10 grid gap-4 text-left sm:grid-cols-3">
+        <div class="rounded-card border border-default bg-white p-5 shadow-card">
+          <span class="grid size-9 place-items-center rounded-lg bg-primary/10"><UIcon name="i-lucide-instagram" class="size-5 text-primary" /></span>
+          <p class="mt-3 font-semibold text-ink">Import posts</p>
+          <p class="mt-0.5 text-sm text-ink-muted">AI turns your Instagram posts into draft products.</p>
         </div>
-        <div class="rounded-xl border border-default p-4">
-          <UIcon name="i-lucide-palette" class="size-5 text-primary" />
-          <p class="font-medium text-highlighted mt-2">Customize</p>
-          <p class="text-sm text-muted mt-0.5">A theme, palette and hero derived from your brand.</p>
+        <div class="rounded-card border border-default bg-white p-5 shadow-card">
+          <span class="grid size-9 place-items-center rounded-lg bg-primary/10"><UIcon name="i-lucide-palette" class="size-5 text-primary" /></span>
+          <p class="mt-3 font-semibold text-ink">Customize</p>
+          <p class="mt-0.5 text-sm text-ink-muted">A theme, palette and hero derived from your brand.</p>
         </div>
-        <div class="rounded-xl border border-default p-4">
-          <UIcon name="i-lucide-rocket" class="size-5 text-primary" />
-          <p class="font-medium text-highlighted mt-2">Launch</p>
-          <p class="text-sm text-muted mt-0.5">Preview, then share your live storefront link.</p>
+        <div class="rounded-card border border-default bg-white p-5 shadow-card">
+          <span class="grid size-9 place-items-center rounded-lg bg-primary/10"><UIcon name="i-lucide-rocket" class="size-5 text-primary" /></span>
+          <p class="mt-3 font-semibold text-ink">Launch</p>
+          <p class="mt-0.5 text-sm text-ink-muted">Preview, then share your live storefront link.</p>
         </div>
       </div>
     </div>
 
     <template v-else>
-      <div class="flex items-center justify-between gap-4 mb-8">
+      <!-- ── Today ─────────────────────────────────────────────────────── -->
+      <h1 class="text-3xl font-bold tracking-tight text-ink">Today</h1>
+      <hr class="mt-4 border-default">
+
+      <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_18rem]">
+        <!-- left -->
         <div>
-          <h1 class="text-2xl font-bold text-highlighted">Your stores</h1>
-          <p class="text-muted mt-1">Manage your Instagram-powered storefronts.</p>
+          <div class="flex flex-wrap gap-x-12 gap-y-4">
+            <div>
+              <p class="text-sm text-ink-muted">Gross volume</p>
+              <p class="mt-1 text-3xl font-bold tabular-nums text-ink">{{ money(sum?.todayMinor) }}</p>
+              <p v-if="nowLabel" class="mt-1 text-xs text-ink-subtle">{{ nowLabel }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-ink-muted">Yesterday</p>
+              <p class="mt-1 text-3xl font-bold tabular-nums text-ink">{{ money(sum?.yesterdayMinor) }}</p>
+            </div>
+          </div>
+          <div class="mt-10"><TodayTimeline /></div>
         </div>
-        <UButton to="/onboarding" icon="i-lucide-plus" label="New store" />
+
+        <!-- right rail -->
+        <div class="space-y-4 lg:border-l lg:border-default lg:pl-8">
+          <div>
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-ink-muted">Pending payment</p>
+              <NuxtLink :to="`/stores/${activeId}/orders`" class="text-sm font-medium text-primary hover:underline">View</NuxtLink>
+            </div>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ money(sum?.pendingMinor) }}</p>
+          </div>
+          <hr class="border-default">
+          <div>
+            <p class="text-sm text-ink-muted">Orders today</p>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-ink">{{ todayOrders }}</p>
+          </div>
+        </div>
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
-      <UCard v-for="s in stores" :key="s.id">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h2 class="font-semibold text-highlighted">{{ s.name }}</h2>
-            <p class="text-sm text-muted">{{ s.subdomain }}</p>
+      <!-- ── Your overview ─────────────────────────────────────────────── -->
+      <h2 class="mt-12 text-2xl font-bold tracking-tight text-ink">Your overview</h2>
+
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <UDropdownMenu :items="rangeMenu" :content="{ align: 'start' }">
+          <button class="inline-flex items-center rounded-md border border-default bg-white px-2.5 py-1.5 text-sm transition hover:bg-black/5">
+            <span class="text-ink-subtle">Date range</span>
+            <span class="mx-2 h-3.5 w-px bg-default" />
+            <span class="font-medium text-ink">{{ rangeLabel }}</span>
+            <UIcon name="i-lucide-chevron-down" class="ml-1 size-4 text-ink-subtle" />
+          </button>
+        </UDropdownMenu>
+        <span class="inline-flex items-center rounded-md border border-default bg-white px-2.5 py-1.5 text-sm font-medium text-ink">Daily</span>
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition"
+          :class="compare ? 'border-primary/40 bg-primary/10 text-primary' : 'border-default bg-white text-ink-muted hover:bg-black/5'"
+          @click="compare = !compare"
+        >
+          <UIcon :name="compare ? 'i-lucide-x' : 'i-lucide-plus'" class="size-3.5" />
+          Compare<span class="mx-1 h-3.5 w-px" :class="compare ? 'bg-primary/30' : 'bg-default'" /><span :class="compare ? 'font-medium' : ''">Previous period</span>
+        </button>
+      </div>
+
+      <!-- metric tiles -->
+      <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div v-for="c in cards" :key="c.label" class="rounded-xl border border-default bg-white p-4">
+          <div class="flex items-center gap-1.5">
+            <p class="text-sm text-ink-muted">{{ c.label }}</p>
+            <UIcon name="i-lucide-info" class="size-3.5 text-ink-subtle" />
           </div>
-          <UBadge :color="s.status === 'active' ? 'success' : 'neutral'" variant="subtle" :label="s.status" />
+          <p class="mt-2 text-2xl font-bold tabular-nums text-ink">{{ c.value }}</p>
+          <p v-if="compare && c.prev !== null" class="mt-1 flex items-center gap-1.5 text-xs text-ink-subtle">
+            <span
+              v-if="c.delta !== null && c.delta !== 0"
+              class="inline-flex items-center gap-0.5 font-medium"
+              :class="c.delta > 0 ? 'text-emerald-600' : 'text-red-600'"
+            >
+              <UIcon :name="c.delta > 0 ? 'i-lucide-arrow-up-right' : 'i-lucide-arrow-down-right'" class="size-3" />{{ Math.abs(c.delta) }}%
+            </span>
+            <span>{{ c.prev }} previous period</span>
+          </p>
+          <p v-else class="mt-1 text-xs text-ink-subtle">&nbsp;</p>
+        </div>
+      </div>
+
+      <!-- chart -->
+      <div class="mt-4 rounded-xl border border-default bg-white p-5 sm:p-6">
+        <div class="mb-4 flex items-center justify-between">
+          <p class="font-semibold text-ink">Gross volume</p>
+          <p class="text-sm font-semibold tabular-nums text-ink">{{ money(sum?.grossMinor) }}</p>
+        </div>
+        <RevenueChart :series="metrics?.series ?? []" :currency="cur" />
+      </div>
+
+      <!-- recent orders -->
+      <div class="mt-4 overflow-hidden rounded-xl border border-default bg-white">
+        <div class="flex items-center justify-between border-b border-default px-5 py-4">
+          <p class="font-semibold text-ink">Recent orders</p>
+          <UButton
+            :to="`/stores/${activeId}/orders`" size="xs" variant="link" color="neutral"
+            trailing-icon="i-lucide-arrow-right" label="View all"
+          />
         </div>
 
-        <div class="flex flex-wrap gap-2 mt-4">
-          <UButton :to="`/stores/${s.id}/products`" size="xs" color="neutral" variant="soft" icon="i-lucide-package" label="Products" />
-          <UButton :to="`/stores/${s.id}/categories`" size="xs" color="neutral" variant="soft" icon="i-lucide-tags" label="Categories" />
-          <UButton :to="`/stores/${s.id}/orders`" size="xs" color="neutral" variant="soft" icon="i-lucide-shopping-cart" label="Orders" />
-          <UButton :to="`/stores/${s.id}/checkout`" size="xs" color="neutral" variant="soft" icon="i-lucide-clipboard-list" label="Checkout" />
-          <UButton :to="`/stores/${s.id}/payments`" size="xs" color="neutral" variant="soft" icon="i-lucide-credit-card" label="Payments" />
-          <UButton :to="`/stores/${s.id}/theme`" size="xs" color="neutral" variant="soft" icon="i-lucide-palette" label="Theme" />
-          <UButton :to="`/stores/${s.id}/instagram`" size="xs" color="neutral" variant="soft" icon="i-lucide-instagram" label="Instagram" />
-          <UButton :to="`/stores/${s.id}/branding`" size="xs" color="neutral" variant="soft" icon="i-lucide-images" label="Branding" />
+        <div v-if="!metrics?.recent.length" class="py-12 text-center">
+          <UIcon name="i-lucide-shopping-cart" class="mx-auto size-8 text-ink-subtle" />
+          <p class="mt-2 text-sm text-ink-muted">No orders yet.</p>
         </div>
-
-        <template #footer>
-          <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-3">
-              <UButton
-                :to="storeUrl(s.subdomain)" target="_blank" external
-                size="xs" variant="link" color="neutral"
-                trailing-icon="i-lucide-external-link" label="View storefront"
-              />
-              <UButton
-                size="xs" variant="link" color="primary"
-                icon="i-lucide-share-2" label="Share"
-                @click="toShare = { id: s.id, name: s.name, subdomain: s.subdomain }"
-              />
-              <UButton
-                :to="`/onboarding?store=${s.id}`"
-                size="xs" variant="link" color="neutral"
-                icon="i-lucide-wand-2" label="Setup guide"
-              />
-            </div>
-            <UButton
-              v-if="s.role === 'owner'"
-              size="xs" variant="ghost" color="error" icon="i-lucide-trash-2" label="Delete"
-              @click="toDelete = { id: s.id, name: s.name, subdomain: s.subdomain }"
-            />
-          </div>
-        </template>
-      </UCard>
+        <table v-else class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-default text-left text-cap uppercase tracking-widest text-ink-subtle">
+              <th class="px-5 py-2.5 font-medium">Order</th>
+              <th class="px-5 py-2.5 font-medium">Customer</th>
+              <th class="px-5 py-2.5 font-medium">Total</th>
+              <th class="px-5 py-2.5 font-medium">Payment</th>
+              <th class="px-5 py-2.5 font-medium">Placed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="o in metrics.recent" :key="o.id" class="border-b border-default transition last:border-0 hover:bg-black/5">
+              <td class="px-5 py-3">
+                <NuxtLink :to="`/stores/${activeId}/orders/${o.id}`" class="font-medium text-ink hover:text-primary">{{ o.order_number }}</NuxtLink>
+              </td>
+              <td class="px-5 py-3 text-ink-muted">{{ o.contact_name || o.contact_email || '—' }}</td>
+              <td class="px-5 py-3 tabular-nums text-ink">{{ formatPrice(o.total_minor, o.currency) }}</td>
+              <td class="px-5 py-3">
+                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize" :class="pill(o.payment_status)">{{ o.payment_status }}</span>
+              </td>
+              <td class="px-5 py-3 text-ink-subtle">{{ o.placed_at.slice(0, 10) }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </template>
-
-    <UModal v-model:open="shareOpen" :title="`Share ${toShare?.name ?? 'your shop'}`">
-      <template #body>
-        <ShareKit v-if="toShare" :subdomain="toShare.subdomain" :store-id="toShare.id" />
-      </template>
-    </UModal>
-
-    <UModal v-model:open="deleteOpen" :title="`Delete ${toDelete?.name ?? 'store'}?`" :dismissible="!deleting">
-      <template #body>
-        <div class="space-y-4">
-          <UAlert
-            color="error" variant="subtle" icon="i-lucide-triangle-alert"
-            title="This permanently deletes the store"
-            description="Products, orders, categories, theme, branding, the Instagram connection, and every uploaded image are removed. This can't be undone."
-          />
-          <p class="text-sm text-muted">
-            Type <strong class="text-highlighted">{{ toDelete?.subdomain }}</strong> to confirm.
-          </p>
-          <UInput
-            v-model="confirmText" autofocus autocomplete="off" class="w-full"
-            :placeholder="toDelete?.subdomain"
-            @keydown.enter="confirmDelete"
-          />
-          <UAlert v-if="delError" color="error" variant="soft" :title="delError" icon="i-lucide-circle-alert" />
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex justify-end gap-2 w-full">
-          <UButton color="neutral" variant="ghost" label="Cancel" :disabled="deleting" @click="toDelete = null" />
-          <UButton
-            color="error" icon="i-lucide-trash-2"
-            :label="deleting ? 'Deleting…' : 'Delete store'"
-            :loading="deleting" :disabled="!canDelete || deleting"
-            @click="confirmDelete"
-          />
-        </div>
-      </template>
-    </UModal>
   </div>
 </template>

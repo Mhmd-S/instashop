@@ -7,47 +7,60 @@ const route = useRoute()
 const storeId = route.params.storeId as string
 const { data } = await useFetch(`/api/admin/stores/${storeId}/orders`)
 const orders = computed(() => data.value?.orders ?? [])
+
+function pill(s: string) {
+  if (['paid', 'active', 'fulfilled', 'succeeded'].includes(s)) return 'bg-emerald-100 text-emerald-700'
+  if (['pending', 'unpaid', 'processing'].includes(s)) return 'bg-amber-100 text-amber-700'
+  if (s === 'failed') return 'bg-red-100 text-red-700'
+  return 'bg-ink/10 text-ink-muted'
+}
 </script>
 
 <template>
   <div>
-    <UButton to="/dashboard" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" label="Dashboard" class="-ml-2 mb-2" />
-    <h1 class="text-2xl font-bold text-highlighted">Orders</h1>
-
-    <UCard v-if="!orders.length" class="mt-6">
-      <div class="text-center py-12">
-        <UIcon name="i-lucide-shopping-cart" class="size-10 text-dimmed mx-auto" />
-        <p class="mt-3 text-muted">No orders yet.</p>
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-ink">Orders</h1>
+        <p class="mt-1 text-sm text-ink-muted">Track and fulfill every order placed in your store.</p>
       </div>
-    </UCard>
+    </div>
 
-    <UCard v-else class="mt-6" :ui="{ body: 'p-0 sm:p-0' }">
+    <div v-if="!orders.length" class="mt-6 rounded-xl border border-default bg-white py-12 text-center">
+      <UIcon name="i-lucide-shopping-cart" class="mx-auto size-8 text-ink-subtle" />
+      <p class="mt-2 text-sm text-ink-muted">No orders yet.</p>
+    </div>
+
+    <div v-else class="mt-6 overflow-hidden rounded-xl border border-default bg-white">
       <table class="w-full text-sm">
-        <thead class="text-left text-muted border-b border-default">
-          <tr>
-            <th class="px-4 py-3 font-medium">Order</th>
-            <th class="px-4 py-3 font-medium">Customer</th>
-            <th class="px-4 py-3 font-medium">Total</th>
-            <th class="px-4 py-3 font-medium">Status</th>
-            <th class="px-4 py-3 font-medium">Payment</th>
-            <th class="px-4 py-3 font-medium">Placed</th>
+        <thead>
+          <tr class="border-b border-default text-left text-cap uppercase tracking-widest text-ink-subtle">
+            <th class="px-5 py-2.5 font-medium">Order</th>
+            <th class="px-5 py-2.5 font-medium">Customer</th>
+            <th class="px-5 py-2.5 font-medium">Total</th>
+            <th class="px-5 py-2.5 font-medium">Status</th>
+            <th class="px-5 py-2.5 font-medium">Payment</th>
+            <th class="px-5 py-2.5 font-medium">Placed</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="o in orders" :key="o.id" class="border-b border-default last:border-0">
-            <td class="px-4 py-3">
-              <ULink :to="`/stores/${storeId}/orders/${o.id}`" class="font-medium text-highlighted hover:text-primary">
+          <tr v-for="o in orders" :key="o.id" class="border-b border-default transition last:border-0 hover:bg-black/5">
+            <td class="px-5 py-3">
+              <ULink :to="`/stores/${storeId}/orders/${o.id}`" class="font-medium text-ink hover:text-primary">
                 {{ o.order_number }}
               </ULink>
             </td>
-            <td class="px-4 py-3 text-default">{{ o.contact_name || o.contact_email || '—' }}</td>
-            <td class="px-4 py-3 text-default">{{ formatPrice(o.total_minor, o.currency) }}</td>
-            <td class="px-4 py-3"><UBadge color="neutral" variant="subtle" class="capitalize" :label="o.status" /></td>
-            <td class="px-4 py-3"><UBadge color="neutral" variant="subtle" class="capitalize" :label="o.payment_status" /></td>
-            <td class="px-4 py-3 text-muted">{{ o.placed_at.slice(0, 10) }}</td>
+            <td class="px-5 py-3 text-ink-muted">{{ o.contact_name || o.contact_email || '—' }}</td>
+            <td class="px-5 py-3 tabular-nums text-ink">{{ formatPrice(o.total_minor, o.currency) }}</td>
+            <td class="px-5 py-3">
+              <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize" :class="pill(o.status)">{{ o.status }}</span>
+            </td>
+            <td class="px-5 py-3">
+              <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize" :class="pill(o.payment_status)">{{ o.payment_status }}</span>
+            </td>
+            <td class="px-5 py-3 text-ink-subtle">{{ o.placed_at.slice(0, 10) }}</td>
           </tr>
         </tbody>
       </table>
-    </UCard>
+    </div>
   </div>
 </template>

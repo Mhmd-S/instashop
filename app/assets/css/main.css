@@ -1,8 +1,14 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+/* Inter — the free, widely-used stand-in for Stripe's proprietary Söhne. Self-served
+   by Google Fonts; drives the whole app via --font-sans below. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @theme {
-  --font-sans: 'Poppins', sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* Stripe's signature cool near-white — the admin surface background (bg-app).
+     Cooler than the marketing warm-olive --color-page, so white cards read crisp. */
+  --color-app: #f6f9fc;
   /* Storefront heading face. Tenants set --t-font-heading at runtime (cssVars.ts);
      other surfaces fall back to the sans stack. Registering it here is what makes
      the `font-heading` utility (used across the storefront) actually emit a rule. */

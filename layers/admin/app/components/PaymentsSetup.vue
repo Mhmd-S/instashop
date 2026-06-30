@@ -108,25 +108,26 @@ async function toggleStripe(enable: boolean) {
     <UAlert v-if="msg" class="mb-4" color="success" variant="soft" icon="i-lucide-check" :description="msg" />
     <UAlert v-if="err" class="mb-4" color="error" variant="soft" icon="i-lucide-circle-alert" :description="err" />
 
-    <div v-if="pending && !data" class="py-10 grid place-items-center text-dimmed">
+    <div v-if="pending && !data" class="grid place-items-center rounded-xl border border-default bg-white py-10 text-ink-subtle">
       <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin" />
     </div>
 
     <!-- Connected -->
-    <UCard v-else-if="connected">
+    <div v-else-if="connected" class="rounded-xl border border-default bg-white p-5 sm:p-6">
       <div class="flex items-center gap-3">
         <UIcon name="i-lucide-credit-card" class="size-10 text-primary" />
         <div>
-          <p class="font-medium text-highlighted">Stripe</p>
-          <p class="text-sm text-muted">Card payments via Stripe Connect</p>
+          <p class="font-medium text-ink">Stripe</p>
+          <p class="text-sm text-ink-muted">Card payments via Stripe Connect</p>
         </div>
-        <UBadge
-          v-if="chargesEnabled" class="ml-auto" color="success" variant="subtle" label="Ready"
-        />
-        <UBadge
-          v-else class="ml-auto" color="warning" variant="subtle"
-          :label="detailsSubmitted ? 'Pending review' : 'Setup incomplete'"
-        />
+        <span
+          v-if="chargesEnabled"
+          class="ml-auto inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium capitalize text-emerald-700"
+        >Ready</span>
+        <span
+          v-else
+          class="ml-auto inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium capitalize text-amber-700"
+        >{{ detailsSubmitted ? 'Pending review' : 'Setup incomplete' }}</span>
       </div>
 
       <UAlert
@@ -144,25 +145,25 @@ async function toggleStripe(enable: boolean) {
           <UIcon
             :name="detailsSubmitted ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'"
             class="size-5 mx-auto"
-            :class="detailsSubmitted ? 'text-success' : 'text-dimmed'"
+            :class="detailsSubmitted ? 'text-success' : 'text-ink-subtle'"
           />
-          <dt class="text-muted mt-1">Details</dt>
+          <dt class="text-ink-muted mt-1">Details</dt>
         </div>
         <div class="rounded-lg border border-default py-3">
           <UIcon
             :name="chargesEnabled ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'"
             class="size-5 mx-auto"
-            :class="chargesEnabled ? 'text-success' : 'text-dimmed'"
+            :class="chargesEnabled ? 'text-success' : 'text-ink-subtle'"
           />
-          <dt class="text-muted mt-1">Charges</dt>
+          <dt class="text-ink-muted mt-1">Charges</dt>
         </div>
         <div class="rounded-lg border border-default py-3">
           <UIcon
             :name="account?.payouts_enabled ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'"
             class="size-5 mx-auto"
-            :class="account?.payouts_enabled ? 'text-success' : 'text-dimmed'"
+            :class="account?.payouts_enabled ? 'text-success' : 'text-ink-subtle'"
           />
-          <dt class="text-muted mt-1">Payouts</dt>
+          <dt class="text-ink-muted mt-1">Payouts</dt>
         </div>
       </dl>
 
@@ -177,23 +178,23 @@ async function toggleStripe(enable: boolean) {
            onboarding wizard (embedded): connecting Stripe auto-enables cards there. -->
       <div v-else-if="!embedded" class="mt-5 flex items-center justify-between gap-4 rounded-lg border border-default p-4">
         <div>
-          <p class="font-medium text-highlighted">Accept card payments</p>
-          <p class="text-sm text-muted">Show Stripe at checkout on your storefront.</p>
+          <p class="font-medium text-ink">Accept card payments</p>
+          <p class="text-sm text-ink-muted">Show Stripe at checkout on your storefront.</p>
         </div>
         <USwitch :model-value="stripeEnabled" @update:model-value="toggleStripe" />
       </div>
-    </UCard>
+    </div>
 
     <!-- Not connected yet -->
-    <UCard v-else>
-      <p class="text-muted text-sm">
-        Accept card payments with <strong class="text-highlighted">Stripe</strong>. Money goes straight to
+    <div v-else class="rounded-xl border border-default bg-white p-5 sm:p-6">
+      <p class="text-ink-muted text-sm">
+        Accept card payments with <strong class="text-ink">Stripe</strong>. Money goes straight to
         your own Stripe account; payouts, refunds, and receipts are yours. Set-up takes a couple of minutes.
       </p>
       <UButton
-        :loading="busy" :disabled="busy" class="mt-4" icon="i-lucide-credit-card" color="primary"
+        :loading="busy" :disabled="busy" class="mt-4 shadow-card" icon="i-lucide-credit-card" color="primary"
         label="Connect Stripe" @click="startOnboarding"
       />
-    </UCard>
+    </div>
   </div>
 </template>

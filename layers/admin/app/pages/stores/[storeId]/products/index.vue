@@ -10,8 +10,6 @@ const storeId = route.params.storeId as string
 // When opened from the onboarding wizard, return there instead of the dashboard.
 // safeReturnPath rejects off-origin values (open-redirect) and array/duplicate params.
 const ret = computed(() => safeReturnPath(route.query.return))
-const backTo = computed(() => ret.value ?? '/dashboard')
-const backLabel = computed(() => (ret.value ? 'Back to setup' : 'Dashboard'))
 // Carry the wizard return into drill-in pages so the flow chrome persists there too.
 const withReturn = (path: string) => path + (ret.value ? `?return=${encodeURIComponent(ret.value)}` : '')
 const { data, refresh } = await useFetch(`/api/admin/stores/${storeId}/products`)
@@ -31,52 +29,50 @@ async function remove(p: AdminProduct) {
 
 <template>
   <div>
-    <div class="flex items-center justify-between gap-4 mb-8">
+    <div class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <UButton :to="backTo" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" :label="backLabel" class="px-0" />
-        <h1 class="text-2xl font-bold text-highlighted mt-1">Products</h1>
+        <h1 class="text-2xl font-bold tracking-tight text-ink">Products</h1>
+        <p class="mt-1 text-sm text-ink-muted">Manage your catalog, pricing and storefront visibility.</p>
       </div>
-      <UButton :to="withReturn(`/stores/${storeId}/products/new`)" icon="i-lucide-plus" label="New product" />
+      <UButton :to="withReturn(`/stores/${storeId}/products/new`)" icon="i-lucide-plus" label="New product" class="shadow-card" />
     </div>
 
-    <div class="mb-6 rounded-xl border border-default p-4">
+    <div class="mt-6 rounded-xl border border-default bg-white p-5 sm:p-6">
       <StoreCurrencySelect :store-id="storeId" @changed="() => refresh()" />
     </div>
 
-    <UCard v-if="!products.length">
-      <div class="text-center py-12">
-        <UIcon name="i-lucide-package" class="size-10 text-dimmed mx-auto" />
-        <p class="mt-3 text-muted">No products yet.</p>
-        <UButton :to="withReturn(`/stores/${storeId}/products/new`)" icon="i-lucide-plus" label="Add one" class="mt-4" />
-      </div>
-    </UCard>
+    <div v-if="!products.length" class="mt-6 rounded-xl border border-default bg-white py-12 text-center">
+      <UIcon name="i-lucide-package" class="mx-auto size-8 text-ink-subtle" />
+      <p class="mt-2 text-sm text-ink-muted">No products yet.</p>
+      <UButton :to="withReturn(`/stores/${storeId}/products/new`)" icon="i-lucide-plus" label="Add one" class="mt-4" />
+    </div>
 
-    <UCard v-else>
+    <div v-else class="mt-6 overflow-hidden rounded-xl border border-default bg-white">
       <table class="w-full text-sm">
-        <thead class="text-left text-muted border-b border-default">
-          <tr>
-            <th class="py-2 font-medium">Product</th>
-            <th class="font-medium">Price</th>
-            <th class="font-medium">Visibility</th>
-            <th />
+        <thead>
+          <tr class="border-b border-default text-left text-cap uppercase tracking-widest text-ink-subtle">
+            <th class="px-5 py-2.5 font-medium">Product</th>
+            <th class="px-5 py-2.5 font-medium">Price</th>
+            <th class="px-5 py-2.5 font-medium">Visibility</th>
+            <th class="px-5 py-2.5 font-medium" />
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in products" :key="p.id" class="border-b border-default last:border-0">
-            <td class="py-3">
+          <tr v-for="p in products" :key="p.id" class="border-b border-default transition last:border-0 hover:bg-black/5">
+            <td class="px-5 py-3">
               <div class="flex items-center gap-3">
                 <img v-if="p.image_url" :src="p.image_url" :alt="p.title" class="w-10 h-10 rounded object-cover border border-default">
-                <div v-else class="w-10 h-10 rounded bg-muted border border-default grid place-items-center">
-                  <UIcon name="i-lucide-image" class="size-4 text-dimmed" />
+                <div v-else class="w-10 h-10 rounded bg-black/5 border border-default grid place-items-center">
+                  <UIcon name="i-lucide-image" class="size-4 text-ink-subtle" />
                 </div>
-                <ULink :to="withReturn(`/stores/${storeId}/products/${p.id}`)" class="font-medium text-highlighted hover:text-primary">
+                <ULink :to="withReturn(`/stores/${storeId}/products/${p.id}`)" class="font-medium text-ink hover:text-primary">
                   {{ p.title }}
                 </ULink>
                 <UBadge v-if="p.needs_review" color="warning" variant="subtle" size="xs" label="Review" />
               </div>
             </td>
-            <td class="text-default">{{ formatPrice(p.price_minor, p.currency) }}</td>
-            <td>
+            <td class="px-5 py-3 tabular-nums text-ink">{{ formatPrice(p.price_minor, p.currency) }}</td>
+            <td class="px-5 py-3">
               <USwitch
                 :model-value="p.published"
                 :label="p.published ? 'Visible' : 'Hidden'"
@@ -84,7 +80,7 @@ async function remove(p: AdminProduct) {
                 @update:model-value="togglePublish(p)"
               />
             </td>
-            <td class="text-right whitespace-nowrap">
+            <td class="px-5 py-3 text-right whitespace-nowrap">
               <div class="flex items-center justify-end gap-1">
                 <UButton size="xs" color="error" variant="ghost" icon="i-lucide-trash-2" label="Delete" @click="remove(p)" />
               </div>
@@ -92,6 +88,6 @@ async function remove(p: AdminProduct) {
           </tr>
         </tbody>
       </table>
-    </UCard>
+    </div>
   </div>
 </template>

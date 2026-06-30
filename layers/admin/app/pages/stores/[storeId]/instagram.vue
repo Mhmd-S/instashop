@@ -69,32 +69,43 @@ async function disconnect() {
 </script>
 
 <template>
-  <UContainer class="max-w-2xl py-2">
+  <div>
+    <!-- Contextual back-link only when launched from the onboarding wizard; the
+         sidebar handles dashboard navigation otherwise. -->
     <UButton
-      :to="backTo" icon="i-lucide-arrow-left" :label="backLabel"
-      variant="link" color="neutral" size="sm" class="-ml-2.5"
+      v-if="ret"
+      :to="backTo" variant="link" color="neutral" size="xs"
+      icon="i-lucide-arrow-left" :label="backLabel" class="-ml-2 mb-2"
     />
-    <h1 class="text-2xl font-bold text-highlighted mt-1">Instagram</h1>
+
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-ink">Instagram</h1>
+        <p class="mt-1 text-sm text-ink-muted">Import your Instagram posts as products.</p>
+      </div>
+    </div>
 
     <UAlert
-      v-if="msg" class="mt-4" :color="msgIsError ? 'warning' : 'info'" variant="soft"
+      v-if="msg" class="mt-6" :color="msgIsError ? 'warning' : 'info'" variant="soft"
       :icon="msgIsError ? 'i-lucide-triangle-alert' : 'i-lucide-info'" :description="msg"
     />
 
     <UCard v-if="connected && account" class="mt-6">
       <div class="flex items-center gap-3">
         <img v-if="account.profile_picture_url" :src="account.profile_picture_url" class="w-12 h-12 rounded-full border border-default object-cover">
-        <UIcon v-else name="i-lucide-instagram" class="size-12 text-dimmed" />
+        <UIcon v-else name="i-lucide-instagram" class="size-12 text-ink-subtle" />
         <div>
-          <p class="font-medium text-highlighted">@{{ account.ig_username }}</p>
-          <p class="text-sm text-muted">{{ account.account_type }} · {{ account.media_count ?? '—' }} posts</p>
+          <p class="font-medium text-ink">@{{ account.ig_username }}</p>
+          <p class="text-sm text-ink-muted">{{ account.account_type }} · {{ account.media_count ?? '—' }} posts</p>
         </div>
-        <UBadge
-          v-if="active" class="ml-auto" color="success" variant="subtle" label="Connected"
-        />
-        <UBadge
-          v-else class="ml-auto" color="warning" variant="subtle" label="Reconnect needed"
-        />
+        <span
+          v-if="active"
+          class="ml-auto inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium capitalize text-emerald-700"
+        >Connected</span>
+        <span
+          v-else
+          class="ml-auto inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium capitalize text-amber-700"
+        >Reconnect needed</span>
       </div>
 
       <UAlert
@@ -104,7 +115,7 @@ async function disconnect() {
         description="The connection was revoked or expired. Reconnect to keep importing posts. Existing products are unaffected."
       />
 
-      <p class="text-sm text-muted mt-4">
+      <p class="text-sm text-ink-muted mt-4">
         Last import: {{ account.last_sync_at ? account.last_sync_at.slice(0, 16).replace('T', ' ') : 'never' }}
       </p>
 
@@ -129,25 +140,25 @@ async function disconnect() {
       </div>
 
       <template #footer>
-        <p class="text-xs text-muted">
+        <p class="text-xs text-ink-subtle">
           AI groups posts of the same item into one product (with all its photos), suggests categories, and skips
           non-product posts. Everything lands as <strong>draft</strong> under Products — review, set prices, and publish.
         </p>
       </template>
     </UCard>
 
-    <UCard v-else class="mt-6">
-      <p class="text-muted text-sm">
-        Connect your Instagram <strong>Professional</strong> (Business or Creator) account to import your
+    <div v-else class="mt-6 rounded-xl border border-default bg-white p-5 sm:p-6">
+      <p class="text-ink-muted text-sm">
+        Connect your Instagram <strong class="text-ink">Professional</strong> (Business or Creator) account to import your
         posts as products.
       </p>
       <UButton
         :to="connectUrl" external
-        class="mt-4" icon="i-lucide-instagram" color="primary"
+        class="mt-4 shadow-card" icon="i-lucide-instagram" color="primary"
         label="Connect Instagram"
       />
-    </UCard>
+    </div>
 
     <IgFixtureLoader :store-id="storeId" class="mt-6" @seeded="refresh" />
-  </UContainer>
+  </div>
 </template>

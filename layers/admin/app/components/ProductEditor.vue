@@ -240,11 +240,11 @@ async function remove() {
 </script>
 
 <template>
-  <div v-if="!product && pending" class="py-10 grid place-items-center text-dimmed">
+  <div v-if="!product && pending" class="py-10 grid place-items-center text-ink-subtle">
     <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin" />
   </div>
-  <div v-else-if="!product" class="py-8 text-center text-muted">
-    <UIcon name="i-lucide-package-x" class="size-8 text-dimmed mx-auto" />
+  <div v-else-if="!product" class="py-8 text-center text-ink-muted">
+    <UIcon name="i-lucide-package-x" class="size-8 text-ink-subtle mx-auto" />
     <p class="mt-2 text-sm">Product not found.</p>
   </div>
 
@@ -255,11 +255,11 @@ async function remove() {
         <div
           v-for="(img, i) in product.images ?? []"
           :key="img.id"
-          class="group relative aspect-square rounded-lg overflow-hidden bg-muted border"
+          class="group relative aspect-square rounded-lg overflow-hidden bg-black/5 border"
           :class="i === 0 ? 'border-primary' : 'border-default'"
         >
           <img v-if="img.public_url" :src="img.public_url" :alt="img.alt ?? product.title" class="w-full h-full object-cover">
-          <div v-else class="w-full h-full grid place-items-center text-dimmed">
+          <div v-else class="w-full h-full grid place-items-center text-ink-subtle">
             <UIcon name="i-lucide-image" class="size-6" />
           </div>
           <span v-if="i === 0" class="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-white">
@@ -280,7 +280,7 @@ async function remove() {
         </div>
         <div
           v-if="!(product.images ?? []).length"
-          class="aspect-square rounded-lg bg-muted border border-default grid place-items-center text-dimmed"
+          class="aspect-square rounded-lg bg-black/5 border border-default grid place-items-center text-ink-subtle"
         >
           <UIcon name="i-lucide-image" class="size-8" />
         </div>
@@ -311,7 +311,7 @@ async function remove() {
     </div>
 
     <!-- fields -->
-    <UCard>
+    <div class="rounded-xl border border-default bg-white p-5 sm:p-6">
       <form class="space-y-5" @submit.prevent="save">
         <UFormField label="Title" name="title">
           <UInput v-model="title" type="text" required class="w-full" />
@@ -320,7 +320,7 @@ async function remove() {
           <UFormField label="Price" name="price">
             <UInput v-model="price" type="number" min="0" step="0.01" required class="w-full">
               <template v-if="displayCurrency" #trailing>
-                <span class="text-xs text-muted">{{ displayCurrency }}</span>
+                <span class="text-xs text-ink-muted">{{ displayCurrency }}</span>
               </template>
             </UInput>
           </UFormField>
@@ -352,31 +352,31 @@ async function remove() {
 
         <div class="flex items-center justify-end *:gap-3">
           <UButton v-if="!embedded" type="submit" :loading="saving" :disabled="saving" icon="i-lucide-check" :label="saving ? 'Saving…' : 'Save'" />
-          <UButton type="button" color="error" variant="ghost" icon="i-lucide-trash-2" label="Delete" @click="remove" />
+          <UButton type="button" color="error" variant="soft" icon="i-lucide-trash-2" label="Delete" @click="remove" />
         </div>
       </form>
-    </UCard>
+    </div>
   </div>
 
   <UModal v-model:open="pickerOpen" title="Add from another product" :dismissible="!copying">
     <template #body>
       <UAlert v-if="pickerError" color="error" variant="soft" :title="pickerError" icon="i-lucide-circle-alert" class="mb-4" />
-      <div v-if="libraryLoading" class="py-10 grid place-items-center text-dimmed">
+      <div v-if="libraryLoading" class="py-10 grid place-items-center text-ink-subtle">
         <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin" />
       </div>
-      <div v-else-if="!library.length" class="py-10 text-center text-muted">
-        <UIcon name="i-lucide-image-off" class="size-8 text-dimmed mx-auto" />
+      <div v-else-if="!library.length" class="py-10 text-center text-ink-muted">
+        <UIcon name="i-lucide-image-off" class="size-8 text-ink-subtle mx-auto" />
         <p class="mt-3 text-sm">No images on your other products yet.</p>
       </div>
       <div v-else class="space-y-6 max-h-[60vh] overflow-y-auto">
         <div v-for="lp in library" :key="lp.id">
-          <p class="text-sm font-medium text-highlighted mb-2">{{ lp.title }}</p>
+          <p class="text-sm font-medium text-ink mb-2">{{ lp.title }}</p>
           <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
             <button
               v-for="img in lp.images"
               :key="img.id"
               type="button"
-              class="group relative aspect-square rounded-lg overflow-hidden bg-muted border transition"
+              class="group relative aspect-square rounded-lg overflow-hidden bg-black/5 border transition"
               :class="selectedSourceIds.includes(img.id) ? 'border-primary ring-2 ring-primary' : 'border-default hover:border-primary'"
               @click="toggleSource(img.id)"
             >

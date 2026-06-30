@@ -150,12 +150,12 @@ function menuItems(c: CategoryWithCount): DropdownMenuItem[][] {
         <UIcon name="i-lucide-tags" class="size-4" />
       </div>
       <div>
-        <p class="text-sm font-medium text-highlighted">Categories</p>
-        <p class="text-xs text-muted">Group products into collections shoppers can browse.</p>
+        <p class="text-sm font-medium text-ink">Categories</p>
+        <p class="text-xs text-ink-muted">Group products into collections shoppers can browse.</p>
       </div>
     </div>
 
-    <div v-if="pending && !categories.length" class="flex items-center gap-2 py-2 text-sm text-dimmed">
+    <div v-if="pending && !categories.length" class="flex items-center gap-2 py-2 text-sm text-ink-subtle">
       <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" /> Loading…
     </div>
 
@@ -179,11 +179,11 @@ function menuItems(c: CategoryWithCount): DropdownMenuItem[][] {
         <!-- chip -->
         <div
           v-else
-          class="inline-flex items-center gap-2 rounded-lg border border-default bg-elevated/40 py-1 pl-3 pr-1 transition hover:border-muted"
+          class="inline-flex items-center gap-2 rounded-lg border border-default bg-white py-1 pl-3 pr-1 transition hover:bg-black/5"
           :class="{ 'opacity-50': busyId === c.id }"
         >
-          <span class="text-sm font-medium text-highlighted">{{ c.name }}</span>
-          <span v-if="c.product_count" class="rounded-full bg-default px-1.5 text-xs text-muted tabular-nums">{{ c.product_count }}</span>
+          <span class="text-sm font-medium text-ink">{{ c.name }}</span>
+          <span v-if="c.product_count" class="rounded-full bg-black/5 px-1.5 text-xs text-ink-muted tabular-nums">{{ c.product_count }}</span>
           <UDropdownMenu :items="menuItems(c)" :content="{ align: 'end' }">
             <UButton
               size="xs"
@@ -215,7 +215,7 @@ function menuItems(c: CategoryWithCount): DropdownMenuItem[][] {
       <button
         v-else
         type="button"
-        class="inline-flex items-center gap-1 rounded-lg border border-dashed border-default px-3 py-1.5 text-sm text-muted transition hover:border-primary hover:text-primary"
+        class="inline-flex items-center gap-1 rounded-lg border border-dashed border-default px-3 py-1.5 text-sm text-ink-muted transition hover:border-primary hover:text-primary"
         @click="startAdd"
       >
         <UIcon name="i-lucide-plus" class="size-4" />
@@ -223,7 +223,7 @@ function menuItems(c: CategoryWithCount): DropdownMenuItem[][] {
       </button>
     </div>
 
-    <p v-if="!pending && !categories.length && !adding" class="mt-2 text-xs text-dimmed">
+    <p v-if="!pending && !categories.length && !adding" class="mt-2 text-xs text-ink-subtle">
       No categories yet — add one, or let an Instagram import suggest them.
     </p>
 
@@ -231,8 +231,8 @@ function menuItems(c: CategoryWithCount): DropdownMenuItem[][] {
 
     <UModal v-model:open="mergeOpen" :title="`Merge “${mergeSource?.name}” into…`" :dismissible="!merging">
       <template #body>
-        <p class="text-sm text-muted mb-3">
-          Products in <span class="font-medium text-highlighted">{{ mergeSource?.name }}</span> move to the category you pick, then
+        <p class="text-sm text-ink-muted mb-3">
+          Products in <span class="font-medium text-ink">{{ mergeSource?.name }}</span> move to the category you pick, then
           “{{ mergeSource?.name }}” is removed.
         </p>
         <USelect v-model="mergeTargetId" :items="mergeTargets" value-key="value" placeholder="Choose a category" class="w-full" />

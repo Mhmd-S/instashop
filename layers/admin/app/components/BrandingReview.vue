@@ -26,34 +26,32 @@ async function setHero(id: string, hero: boolean) {
   <div>
     <UAlert v-if="err" color="error" variant="soft" :title="err" icon="i-lucide-circle-alert" class="mb-4" />
 
-    <div v-if="pending && !assets.length" class="py-10 grid place-items-center text-dimmed">
+    <div v-if="pending && !assets.length" class="grid place-items-center rounded-xl border border-default bg-white py-10 text-ink-subtle">
       <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin" />
     </div>
 
-    <UCard v-else-if="!assets.length">
-      <div class="text-center py-12">
-        <UIcon name="i-lucide-images" class="size-10 text-dimmed mx-auto" />
-        <p class="mt-3 text-muted">No branding posts yet. Import from Instagram and non-product posts land here.</p>
-      </div>
-    </UCard>
+    <div v-else-if="!assets.length" class="rounded-xl border border-default bg-white py-12 text-center">
+      <UIcon name="i-lucide-images" class="mx-auto size-8 text-ink-subtle" />
+      <p class="mt-2 text-sm text-ink-muted">No branding posts yet. Import from Instagram and non-product posts land here.</p>
+    </div>
 
     <ul v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <li v-for="a in assets" :key="a.id">
         <UCard variant="outline" class="overflow-hidden">
           <template #header>
-            <div class="aspect-square overflow-hidden bg-muted -m-4 mb-0">
+            <div class="aspect-square overflow-hidden bg-black/5 -m-4 mb-0">
               <img v-if="a.public_url" :src="a.public_url" :alt="a.caption ?? ''" class="size-full object-cover">
-              <div v-else class="size-full grid place-items-center text-dimmed"><UIcon name="i-lucide-image-off" class="size-6" /></div>
+              <div v-else class="size-full grid place-items-center text-ink-subtle"><UIcon name="i-lucide-image-off" class="size-6" /></div>
             </div>
           </template>
           <div class="flex items-center gap-2">
             <UBadge :label="a.role" color="neutral" variant="subtle" size="xs" class="capitalize" />
             <UBadge v-if="a.used_as === 'hero'" label="Hero" color="primary" variant="subtle" size="xs" />
-            <ULink v-if="a.ig_permalink" :to="a.ig_permalink" target="_blank" external class="ml-auto text-dimmed hover:text-primary">
+            <ULink v-if="a.ig_permalink" :to="a.ig_permalink" target="_blank" external class="ml-auto text-ink-subtle hover:text-primary">
               <UIcon name="i-lucide-external-link" class="size-4" />
             </ULink>
           </div>
-          <p v-if="a.caption" class="mt-2 text-xs text-muted line-clamp-2">{{ a.caption }}</p>
+          <p v-if="a.caption" class="mt-2 text-xs text-ink-muted line-clamp-2">{{ a.caption }}</p>
           <UButton
             v-if="a.used_as === 'hero'"
             class="mt-3" block size="xs" color="neutral" variant="soft" icon="i-lucide-x" label="Remove as hero"

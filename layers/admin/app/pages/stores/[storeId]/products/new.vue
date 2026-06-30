@@ -35,10 +35,15 @@ async function submit() {
 
 <template>
   <div class="max-w-lg">
-    <UButton :to="`/stores/${storeId}/products${retQs}`" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" label="Products" class="px-0" />
-    <h1 class="text-2xl font-bold text-highlighted mt-1 mb-6">New product</h1>
+    <UButton :to="`/stores/${storeId}/products${retQs}`" variant="link" color="neutral" size="xs" icon="i-lucide-arrow-left" label="Products" class="-ml-2 mb-2" />
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-ink">New product</h1>
+        <p class="mt-1 text-sm text-ink-muted">Add a product to your catalog.</p>
+      </div>
+    </div>
 
-    <UCard>
+    <div class="mt-6 rounded-xl border border-default bg-white p-5 sm:p-6">
       <form class="space-y-5" @submit.prevent="submit">
         <UFormField label="Title" name="title">
           <UInput v-model="title" type="text" required placeholder="Hand-thrown mug" class="w-full" />
@@ -58,9 +63,10 @@ async function submit() {
           :disabled="loading || !title || !price"
           icon="i-lucide-plus"
           :label="loading ? 'Creating…' : 'Create product'"
+          class="shadow-card"
         />
-        <p class="text-xs text-muted">You'll add a photo on the next screen. New products start hidden — make them visible when ready.</p>
+        <p class="text-xs text-ink-subtle">You'll add a photo on the next screen. New products start hidden — make them visible when ready.</p>
       </form>
-    </UCard>
+    </div>
   </div>
 </template>

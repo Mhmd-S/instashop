@@ -111,8 +111,7 @@ const steps = [
               <div class="mx-auto max-w-2xl text-center">
                 <p class="text-cap font-medium uppercase tracking-[0.12em] text-ink-subtle">How it works</p>
                 <h2 class="mt-3 text-h2 font-semibold text-ink text-balance">
-                  From feed to checkout
-                  <span class="text-ink-subtle">in minutes.</span>
+                  From feed to checkout in minutes.
                 </h2>
                 <p class="mx-auto mt-4 max-w-xl text-lead text-ink-muted">
                   Three steps, start to first sale — no code, no waiting on a designer.
